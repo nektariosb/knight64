@@ -140,13 +140,19 @@ class InfoScreen extends StatelessWidget {
                 '12 of the other. A tour must start and end on the color '
                 'with 13, so starting anywhere else can never work.',
               ),
-              const _Point('On a 4×4 board there is no tour at all.'),
               const _Point(
-                'In a magic square, every row, column and diagonal '
-                "adds up to the same number. No knight's tour on the 8×8 "
-                'chessboard is fully magic, as a computer search showed in '
-                '2003. But 140 tours are "semi-magic": the numbers in every '
-                'row and every column add up to 260.',
+                'On a 4×4 board there is no tour at all: the knight always '
+                'gets stuck before square 16. The smallest square board '
+                'with a tour is 5×5, and the smallest with a closed tour '
+                'is 6×6.',
+              ),
+              const _Point(
+                'A puzzle for number lovers: after a full tour on the 8×8 '
+                'board, add up the numbers in each row and each column. In '
+                '140 different tours, every row and every column adds up '
+                'to 260! If the two long diagonals did too, it would be a '
+                '"magic square". But a computer search in 2003 showed that '
+                'no tour can do that.',
               ),
               const SizedBox(height: 24),
               Text(
