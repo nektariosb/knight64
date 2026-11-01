@@ -10,6 +10,10 @@ class BoardView extends StatelessWidget {
     required this.game,
     required this.onTap,
     this.rejectedIndex,
+    this.showPath = false,
+    this.highlightMoves = false,
+    this.countExits = false,
+    this.markDead = false,
   });
 
   final KnightTour game;
@@ -18,9 +22,37 @@ class BoardView extends StatelessWidget {
   /// Square to briefly flash red after a rejected tap.
   final int? rejectedIndex;
 
+  /// Draws a line through the visited squares in order. It animates in each
+  /// time it appears.
+  final bool showPath;
+
+  /// Puts a dot on every square the knight can jump to next.
+  final bool highlightMoves;
+
+  /// Shows on every square the knight can jump to how many jumps it would
+  /// have from there. Replaces the dot of [highlightMoves].
+  final bool countExits;
+
+  /// Tints the squares the knight can never reach again.
+  final bool markDead;
+
+  /// How long the path takes to draw for a game of [moves] moves.
+  static Duration pathDrawTime(int moves) => Duration(milliseconds: 25 * moves);
+
+  Widget _grid(List<Widget> children) => GridView.count(
+    crossAxisCount: game.size,
+    physics: const NeverScrollableScrollPhysics(),
+    children: children,
+  );
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<BoardColors>()!;
+    final current = game.current;
+    final targets = (highlightMoves || countExits) && current != null
+        ? game.legalMovesFrom(current).toSet()
+        : const <int>{};
+    final dead = markDead && !game.isOver ? game.deadSquares : const <int>{};
     return AspectRatio(
       aspectRatio: 1,
       child: Container(
@@ -30,17 +62,48 @@ class BoardView extends StatelessWidget {
           boxShadow: const [BoxShadow(blurRadius: 12, color: Colors.black26)],
         ),
         clipBehavior: Clip.antiAlias,
-        child: GridView.count(
-          crossAxisCount: game.size,
-          physics: const NeverScrollableScrollPhysics(),
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            for (var i = 0; i < game.squareCount; i++)
-              _Square(
-                index: i,
-                game: game,
-                rejected: i == rejectedIndex,
-                onTap: () => onTap(i),
+            _grid([
+              for (var i = 0; i < game.squareCount; i++)
+                _Square(
+                  index: i,
+                  game: game,
+                  rejected: i == rejectedIndex,
+                  hinted: targets.contains(i),
+                  exits: countExits && targets.contains(i)
+                      ? game.legalMovesFrom(i).length
+                      : null,
+                  dead: dead.contains(i),
+                  onTap: () => onTap(i),
+                ),
+            ]),
+            if (showPath)
+              IgnorePointer(
+                key: const ValueKey('path'),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: 1),
+                  duration: pathDrawTime(game.moveCount),
+                  builder: (context, progress, _) => CustomPaint(
+                    painter: _PathPainter(
+                      path: game.path,
+                      size: game.size,
+                      closed: game.isClosed,
+                      progress: progress,
+                      color: colors.path,
+                      closingColor: colors.closingPath,
+                    ),
+                  ),
+                ),
               ),
+            IgnorePointer(
+              key: const ValueKey('numbers'),
+              child: _grid([
+                for (var i = 0; i < game.squareCount; i++)
+                  _Number(index: i, game: game),
+              ]),
+            ),
           ],
         ),
       ),
@@ -53,31 +116,73 @@ class _Square extends StatelessWidget {
     required this.index,
     required this.game,
     required this.rejected,
+    required this.hinted,
+    required this.exits,
+    required this.dead,
     required this.onTap,
   });
 
   final int index;
   final KnightTour game;
   final bool rejected;
+
+  /// The knight can jump here: shows [exits] if given, otherwise a dot.
+  final bool hinted;
+  final int? exits;
+
+  /// The knight can never reach this square again.
+  final bool dead;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final row = index ~/ game.size, col = index % game.size;
     final isLight = (row + col).isEven;
-    final number = game.numberAt(index);
-    final isCurrent = index == game.current;
     final colors = Theme.of(context).extension<BoardColors>()!;
 
     final Color overlay;
     if (rejected) {
       overlay = colors.reject;
-    } else if (isCurrent) {
+    } else if (index == game.current) {
       overlay = colors.current;
-    } else if (number > 0) {
+    } else if (game.numberAt(index) > 0) {
       overlay = colors.visited;
+    } else if (dead) {
+      overlay = colors.dead;
     } else {
       overlay = Colors.transparent;
+    }
+
+    Widget? hint;
+    if (exits != null) {
+      hint = Center(
+        child: FittedBox(
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Text(
+              '$exits',
+              style: TextStyle(
+                color: colors.hint,
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ),
+      );
+    } else if (hinted) {
+      hint = Center(
+        child: FractionallySizedBox(
+          widthFactor: 0.3,
+          heightFactor: 0.3,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: colors.hint,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+      );
     }
 
     return GestureDetector(
@@ -87,28 +192,115 @@ class _Square extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           color: overlay,
-          alignment: Alignment.center,
-          child: number == 0
-              ? null
-              : FittedBox(
-                  child: Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: Text(
-                      '$number',
-                      style: TextStyle(
-                        color: isCurrent
-                            ? colors.currentText
-                            : colors.visitedText,
-                        fontSize: 22,
-                        fontWeight: isCurrent
-                            ? FontWeight.w900
-                            : FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
+          child: hint,
         ),
       ),
     );
   }
+}
+
+/// Move number on a square, drawn above the path so it stays readable.
+class _Number extends StatelessWidget {
+  const _Number({required this.index, required this.game});
+
+  final int index;
+  final KnightTour game;
+
+  @override
+  Widget build(BuildContext context) {
+    final number = game.numberAt(index);
+    if (number == 0) return const SizedBox.shrink();
+    final isCurrent = index == game.current;
+    final colors = Theme.of(context).extension<BoardColors>()!;
+    return Center(
+      child: FittedBox(
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Text(
+            '$number',
+            style: TextStyle(
+              color: isCurrent ? colors.currentText : colors.visitedText,
+              fontSize: 22,
+              fontWeight: isCurrent ? FontWeight.w900 : FontWeight.w600,
+              shadows: isCurrent
+                  ? null
+                  : [
+                      for (var i = 0; i < 3; i++)
+                        Shadow(color: colors.visitedTextHalo, blurRadius: 3),
+                    ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Line from square centre to square centre along [path], drawn up to
+/// [progress] (0 to 1). A closed tour gets one more line back to the start.
+class _PathPainter extends CustomPainter {
+  _PathPainter({
+    required this.path,
+    required this.size,
+    required this.closed,
+    required this.progress,
+    required this.color,
+    required this.closingColor,
+  });
+
+  final List<int> path;
+  final int size;
+  final bool closed;
+  final double progress;
+  final Color color;
+  final Color closingColor;
+
+  @override
+  void paint(Canvas canvas, Size canvasSize) {
+    if (path.isEmpty) return;
+    final cell = canvasSize.width / size;
+    Offset centre(int index) =>
+        Offset((index % size + 0.5) * cell, (index ~/ size + 0.5) * cell);
+
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = cell * 0.08
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    // Dot on square 1, so you can see where the tour started.
+    canvas.drawCircle(centre(path.first), cell * 0.12, Paint()..color = color);
+
+    final segments = path.length - 1 + (closed ? 1 : 0);
+    if (segments == 0) return;
+    final drawn = progress * segments;
+
+    final line = Path()..moveTo(centre(path.first).dx, centre(path.first).dy);
+    for (var i = 1; i < path.length && i - 1 < drawn; i++) {
+      final from = centre(path[i - 1]), to = centre(path[i]);
+      final end = Offset.lerp(from, to, (drawn - (i - 1)).clamp(0, 1))!;
+      line.lineTo(end.dx, end.dy);
+    }
+    canvas.drawPath(line, paint);
+
+    if (closed && drawn > segments - 1) {
+      final from = centre(path.last), to = centre(path.first);
+      canvas.drawLine(
+        from,
+        Offset.lerp(from, to, drawn - (segments - 1))!,
+        paint
+          ..color = closingColor
+          ..strokeWidth = cell * 0.12,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_PathPainter old) =>
+      old.progress != progress ||
+      old.path.length != path.length ||
+      old.closed != closed ||
+      old.color != color ||
+      old.closingColor != closingColor;
 }

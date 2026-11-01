@@ -15,9 +15,34 @@ Open issues and ideas for Knight64.
 
 ## Gameplay
 
-- [ ] Decide what happens when you fill all 64 squares (celebration, closed-tour bonus, ...).
+- [x] Closed-tour bonus: if square 64 is a knight's move from square 1, celebrate and mark the score as "closed".
+- [ ] Closed-tour sound?
+- [ ] Decide what else happens when you fill all 64 squares (celebration, ...).
 - [ ] Decide whether the undo rules (3 per game, no chained undos) are right after playtesting.
-- [ ] Possible extra modes: smaller boards (5×5, 6×6) or a timer.
+- [ ] Test the "Check if the board can be filled" option on a real phone: is it fast enough? (Up to about 3 s per move on a PC for the hardest positions, 200,000 search steps; 30,000 on the web.)
+- [ ] Solver: could it answer more of the ~2% "Hard to tell" positions? They're early positions (moves 5–25), mostly ones that turn out lost a few moves later.
+- [x] Options menu (help options off by default):
+  - [x] Highlight available moves.
+  - [x] Path lines while playing. Not a help: the numbers already show the route.
+  - [x] Dead-square warning: mark unvisited squares that can no longer be reached.
+  - [x] "Still solvable?" check, using a solver (Warnsdorff + backtracking). Gives up on about 2% of positions (shows "Hard to tell").
+  - [x] Onward-move counts: each available square shows how many moves you'd have from there.
+  - [x] Path lines at the end of a game (win or lose). On by default. Doesn't count as an assist.
+  - [x] A game counts as "assisted" if any assist option was turned on at any point during it, even if it was turned off again. Assisted games don't go on the high-score list.
+  - [x] Kid-friendly wording for this, e.g. "Only games played without help can enter the high scores."
+
+## Modes
+
+- [ ] Board sizes: 5×5, 6×6, 7×7, 10×10. Boards with an odd number of squares (5×5, 7×7) have no closed tours, so no closed-tour bonus there. The game rules and the solver already take a size (the solver up to 10×10); the UI and high scores assume 8×8.
+- [ ] Blocked squares: some squares are holes; visit all the others. The solver can treat holes as already visited.
+- [ ] Puzzle mode: some squares come pre-numbered; find a tour that matches them. Needs the solver.
+- [ ] Daily challenge: same start square (and holes) for everyone, picked from the date.
+- [ ] Timer?
+
+## Info
+
+- [ ] "About the Knight's Tour" screen: how to play, open vs. closed tours, a short history, facts and numbers. Check every fact against a source before adding it.
+- [ ] Show a random fact somewhere (game over screen?).
 
 ## Graphics
 

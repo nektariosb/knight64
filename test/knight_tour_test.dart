@@ -34,6 +34,15 @@ void main() {
     expect(game.tryMove(sq(0, 0)), isFalse);
   });
 
+  test('path lists the visited squares in order and follows undo', () {
+    game.tryMove(sq(0, 0));
+    game.tryMove(sq(2, 1));
+    game.tryMove(sq(4, 2));
+    expect(game.path, [sq(0, 0), sq(2, 1), sq(4, 2)]);
+    game.undo();
+    expect(game.path, [sq(0, 0), sq(2, 1)]);
+  });
+
   test('undo clears the last square and cannot be chained', () {
     game.tryMove(sq(0, 0));
     game.tryMove(sq(2, 1));
@@ -85,6 +94,20 @@ void main() {
     }
     expect(game.isComplete, isTrue);
     expect(game.numberAt(index), 64);
+  });
+
+  test('a square is dead once all its neighbours are used up', () {
+    expect(game.deadSquares, isEmpty);
+    // The corner's only two neighbours are (1,2) and (2,1).
+    game.tryMove(sq(1, 2));
+    game.tryMove(sq(3, 3));
+    game.tryMove(sq(2, 1));
+    // The knight can still jump into the corner from here.
+    expect(game.deadSquares, isEmpty);
+    game.tryMove(sq(4, 2));
+    expect(game.deadSquares, {sq(0, 0)});
+    game.undo();
+    expect(game.deadSquares, isEmpty);
   });
 
   test('stuck when no unvisited knight moves remain', () {

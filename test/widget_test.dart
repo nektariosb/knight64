@@ -1,8 +1,53 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:knight64/main.dart';
+import 'package:knight64/ui/board_view.dart';
+import 'package:knight64/ui/options_sheet.dart';
 import 'package:knight64/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// Starts the app on a phone-sized screen, so the Options sheet fits.
+Future<void> startApp(WidgetTester tester) async {
+  tester.view
+    ..physicalSize = const Size(1080, 2400)
+    ..devicePixelRatio = 2.625;
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(Knight64App(themeController: ThemeController()));
+  await tester.pumpAndSettle();
+}
+
+/// Taps the square at [row], [col] on the board.
+Future<void> tapSquare(WidgetTester tester, int row, int col) async {
+  final board = tester.getRect(find.byType(BoardView)).deflate(4);
+  final cell = board.width / 8;
+  await tester.tapAt(board.topLeft + Offset(col + 0.5, row + 0.5) * cell);
+  await tester.pump();
+}
+
+/// Plays 4 moves that end in the corner after both its exits are used up.
+Future<void> playIntoCorner(WidgetTester tester) async {
+  for (final (row, col) in [(1, 2), (3, 3), (2, 1), (0, 0)]) {
+    await tapSquare(tester, row, col);
+  }
+}
+
+/// Opens Options, flips the switch called [label] [times] times, and closes
+/// the sheet again.
+Future<void> toggleOption(
+  WidgetTester tester,
+  String label, {
+  int times = 1,
+}) async {
+  await tester.tap(find.byTooltip('Options'));
+  await tester.pumpAndSettle();
+  for (var i = 0; i < times; i++) {
+    await tester.ensureVisible(find.text(label));
+    await tester.tap(find.text(label));
+    await tester.pumpAndSettle();
+  }
+  Navigator.of(tester.element(find.byType(OptionsSheet))).pop();
+  await tester.pumpAndSettle();
+}
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -27,9 +72,146 @@ void main() {
     expect(find.byTooltip('Dark mode'), findsOneWidget);
   });
 
-  testWidgets('sound button turns sound off and remembers it', (tester) async {
-    await tester.pumpWidget(Knight64App(themeController: ThemeController()));
+  testWidgets('game over draws the path, then offers to save', (tester) async {
+    await startApp(tester);
+
+    expect(find.byKey(const ValueKey('path')), findsNothing);
+    await playIntoCorner(tester);
+
+    expect(find.text('No moves left: 4 / 64'), findsOneWidget);
+    expect(find.byKey(const ValueKey('path')), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+
+    await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.text('Your name'), findsOneWidget);
+  });
+
+  testWidgets('with the path option off, the dialog comes right away', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({'path_at_end': false});
+    await startApp(tester);
+
+    await playIntoCorner(tester);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('path')), findsNothing);
+    expect(find.byType(AlertDialog), findsOneWidget);
+  });
+
+  testWidgets('highlight marks the possible moves and counts as help', (
+    tester,
+  ) async {
+    await startApp(tester);
+
+    await toggleOption(tester, 'Highlight possible moves');
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('highlight_moves'), true);
+
+    await tapSquare(tester, 0, 0);
+    expect(find.text('Playing with help'), findsOneWidget);
+    // A corner square has two knight moves.
+    expect(find.byType(FractionallySizedBox), findsNWidgets(2));
+  });
+
+  testWidgets('help turned on and off mid-game still counts', (tester) async {
+    await startApp(tester);
+
+    await tapSquare(tester, 1, 2);
+    expect(find.text('Playing with help'), findsNothing);
+    await toggleOption(tester, 'Highlight possible moves', times: 2);
+    expect(find.text('Playing with help'), findsOneWidget);
+    expect(find.byType(FractionallySizedBox), findsNothing);
+
+    for (final (row, col) in [(3, 3), (2, 1), (0, 0)]) {
+      await tapSquare(tester, row, col);
+    }
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('You played with help'), findsOneWidget);
+    expect(find.text('Your name'), findsNothing);
+
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    expect(find.text('Save'), findsNothing);
+
+    await tester.tap(find.text('Restart'));
+    await tester.pumpAndSettle();
+    expect(find.text('Playing with help'), findsNothing);
+  });
+
+  testWidgets('exit counts show on the possible moves', (tester) async {
+    await startApp(tester);
+
+    await toggleOption(tester, 'Count the exits');
+    await tapSquare(tester, 0, 0);
+    // From the corner the knight can go to (1,2) or (2,1); each has 5 exits.
+    expect(find.text('5'), findsNWidgets(2));
+    expect(find.byType(FractionallySizedBox), findsNothing);
+    expect(find.text('Playing with help'), findsOneWidget);
+  });
+
+  testWidgets('unreachable squares are marked', (tester) async {
+    await startApp(tester);
+
+    await toggleOption(tester, 'Warn about unreachable squares');
+    final dead = BoardColors.dark.dead;
+    bool cornerMarked() => tester
+        .widgetList<AnimatedContainer>(find.byType(AnimatedContainer))
+        .any((c) => (c.decoration as BoxDecoration?)?.color == dead);
+
+    for (final (row, col) in [(1, 2), (3, 3), (2, 1)]) {
+      await tapSquare(tester, row, col);
+    }
+    await tester.pumpAndSettle();
+    expect(cornerMarked(), isFalse);
+
+    await tapSquare(tester, 4, 2);
+    await tester.pumpAndSettle();
+    expect(cornerMarked(), isTrue);
+    expect(find.text('Playing with help'), findsOneWidget);
+  });
+
+  testWidgets('fill check says whether the board can still be filled', (
+    tester,
+  ) async {
+    await startApp(tester);
+    await toggleOption(tester, 'Check if the board can be filled');
+
+    /// Lets the background check finish, then shows its answer.
+    Future<void> waitFor(String text) async {
+      for (var i = 0; i < 100 && find.text(text).evaluate().isEmpty; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 50)),
+        );
+        await tester.pump();
+      }
+      expect(find.text(text), findsOneWidget);
+    }
+
+    await tapSquare(tester, 1, 2);
+    expect(find.text('Playing with help'), findsOneWidget);
+    await waitFor('Can still be filled');
+
+    // Trap the corner: its only two neighbours get used up.
+    for (final (row, col) in [(3, 3), (2, 1), (4, 2)]) {
+      await tapSquare(tester, row, col);
+    }
+    await waitFor("Can't be filled anymore");
+  });
+
+  testWidgets('path while playing is not a help', (tester) async {
+    await startApp(tester);
+
+    await toggleOption(tester, 'Show the path while playing');
+    await tapSquare(tester, 0, 0);
+    expect(find.byKey(const ValueKey('path')), findsOneWidget);
+    expect(find.text('Playing with help'), findsNothing);
+  });
+
+  testWidgets('sound button turns sound off and remembers it', (tester) async {
+    await startApp(tester);
 
     await tester.tap(find.byTooltip('Sound off'));
     await tester.pumpAndSettle();

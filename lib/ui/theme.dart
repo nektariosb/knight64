@@ -9,6 +9,7 @@ const _mint = Color(0xFFA8FFCB);
 const _olive = Color(0xFF7D8F5C);
 const _night = Color(0xFF1B231E);
 const _mist = Color(0xFFEEF3EA);
+const _gold = Color(0xFFE8C14A);
 
 /// Board colors, which depend on light/dark mode.
 class BoardColors extends ThemeExtension<BoardColors> {
@@ -17,10 +18,15 @@ class BoardColors extends ThemeExtension<BoardColors> {
     required this.darkSquare,
     required this.visited,
     required this.visitedText,
+    required this.visitedTextHalo,
     required this.current,
     required this.currentText,
     required this.reject,
     required this.border,
+    required this.path,
+    required this.closingPath,
+    required this.hint,
+    required this.dead,
   });
 
   final Color lightSquare;
@@ -29,20 +35,40 @@ class BoardColors extends ThemeExtension<BoardColors> {
   /// Semi-transparent overlay on visited squares.
   final Color visited;
   final Color visitedText;
+
+  /// Glow behind visited numbers so they stay readable over the path.
+  final Color visitedTextHalo;
   final Color current;
   final Color currentText;
   final Color reject;
   final Color border;
+
+  /// Line through the visited squares, drawn when the game ends.
+  final Color path;
+
+  /// Line from the last square back to the first in a closed tour.
+  final Color closingPath;
+
+  /// Dot on the squares the knight can jump to, when that help is on.
+  final Color hint;
+
+  /// Tint on squares the knight can never reach again, when that help is on.
+  final Color dead;
 
   static const dark = BoardColors(
     lightSquare: _sage,
     darkSquare: _forest,
     visited: Color(0xB31B231E),
     visitedText: _sage,
+    visitedTextHalo: _night,
     current: _mint,
     currentText: _pine,
     reject: Color(0xFFD9645A),
     border: _olive,
+    path: Color(0x99A8FFCB),
+    closingPath: _gold,
+    hint: Color(0x8C1B231E),
+    dead: Color(0x99D9645A),
   );
 
   static const light = BoardColors(
@@ -50,10 +76,15 @@ class BoardColors extends ThemeExtension<BoardColors> {
     darkSquare: Color(0xFFA3BB98),
     visited: Color(0xC737664A),
     visitedText: Colors.white,
+    visitedTextHalo: _pine,
     current: _pine,
     currentText: _mint,
     reject: Color(0xFFC0392B),
     border: _olive,
+    path: Color(0xB326332B),
+    closingPath: _gold,
+    hint: Color(0x8037664A),
+    dead: Color(0x80C0392B),
   );
 
   @override
@@ -67,10 +98,15 @@ class BoardColors extends ThemeExtension<BoardColors> {
       darkSquare: Color.lerp(darkSquare, other.darkSquare, t)!,
       visited: Color.lerp(visited, other.visited, t)!,
       visitedText: Color.lerp(visitedText, other.visitedText, t)!,
+      visitedTextHalo: Color.lerp(visitedTextHalo, other.visitedTextHalo, t)!,
       current: Color.lerp(current, other.current, t)!,
       currentText: Color.lerp(currentText, other.currentText, t)!,
       reject: Color.lerp(reject, other.reject, t)!,
       border: Color.lerp(border, other.border, t)!,
+      path: Color.lerp(path, other.path, t)!,
+      closingPath: Color.lerp(closingPath, other.closingPath, t)!,
+      hint: Color.lerp(hint, other.hint, t)!,
+      dead: Color.lerp(dead, other.dead, t)!,
     );
   }
 }

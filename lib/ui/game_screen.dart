@@ -1,12 +1,16 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../game/high_scores.dart';
 import '../game/knight_tour.dart';
+import '../game/options.dart';
+import '../game/solver.dart';
 import 'board_view.dart';
 import 'high_scores_screen.dart';
+import 'options_sheet.dart';
 import 'save_score_dialog.dart';
 import 'sounds.dart';
 import 'theme.dart';
@@ -24,8 +28,12 @@ class _GameScreenState extends State<GameScreen> {
   final _game = KnightTour();
   final _sounds = Sounds();
   final _store = HighScoreStore();
+  final _options = Options();
   int? _rejectedIndex;
   Timer? _flashTimer;
+
+  /// Opens the save dialog once the path has finished drawing.
+  Timer? _saveTimer;
 
   /// Once saved, the game is locked so the same game can't be saved twice.
   bool _scoreSaved = false;
@@ -34,7 +42,54 @@ class _GameScreenState extends State<GameScreen> {
   /// the "Save score" button.
   bool _gameOverShown = false;
 
+  /// A help option was on during this game, even if it was turned off again.
+  /// Such games can't enter the high scores.
+  bool _helped = false;
+
+  /// Answer of the "can the board still be filled" check, or null while it
+  /// runs or when it's off.
+  Fillable? _fillable;
+
+  /// Only one check runs at a time. If the board changes meanwhile, it runs
+  /// again for the new board when done.
+  bool _checking = false, _recheck = false;
+
   bool get _canUndo => _game.canUndo && !_scoreSaved;
+
+  bool get _showFillable =>
+      _options.checkFillable && _game.moveCount > 0 && !_game.isOver;
+
+  /// Starts the fill check in the background, if it's on. Call it whenever
+  /// the board or the options change.
+  void _checkFillable() {
+    _fillable = null;
+    if (_checking) {
+      _recheck = true;
+      return;
+    }
+    if (!_showFillable) return;
+    _checking = true;
+    _recheck = false;
+    compute(canFill, (
+      size: _game.size,
+      visited: [
+        for (var i = 0; i < _game.squareCount; i++) _game.numberAt(i) > 0,
+      ],
+      current: _game.current!,
+      // The web has no background threads, so keep the check short there.
+      maxSteps: kIsWeb ? 30000 : 200000,
+    )).then((result) {
+      _checking = false;
+      if (!mounted) return;
+      setState(() {
+        if (_recheck) {
+          _checkFillable();
+        } else {
+          _fillable = result;
+        }
+      });
+    });
+  }
 
   @override
   void initState() {
@@ -42,11 +97,15 @@ class _GameScreenState extends State<GameScreen> {
     _sounds.load().then((_) {
       if (mounted) setState(() {});
     });
+    _options.load().then((_) {
+      if (mounted) setState(_checkFillable);
+    });
   }
 
   @override
   void dispose() {
     _flashTimer?.cancel();
+    _saveTimer?.cancel();
     _sounds.dispose();
     super.dispose();
   }
@@ -54,10 +113,20 @@ class _GameScreenState extends State<GameScreen> {
   void _onSquareTap(int index) {
     if (_game.tryMove(index)) {
       _sounds.move();
-      setState(() {});
+      setState(() {
+        _helped |= _options.anyHelp;
+        _checkFillable();
+      });
       if (_game.isOver && !_gameOverShown) {
         _gameOverShown = true;
-        _offerSave();
+        // Waits for the path to draw, unless it was already on the board.
+        _saveTimer = Timer(
+          _options.pathAtEnd && !_options.pathWhilePlaying
+              ? BoardView.pathDrawTime(_game.moveCount) +
+                    const Duration(milliseconds: 500)
+              : Duration.zero,
+          _offerSave,
+        );
       }
       return;
     }
@@ -71,15 +140,38 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _undo() => setState(() {
+    _saveTimer?.cancel();
     _game.undo();
     _gameOverShown = false;
+    _checkFillable();
   });
 
   void _restart() => setState(() {
+    _saveTimer?.cancel();
     _game.restart();
     _scoreSaved = false;
     _gameOverShown = false;
+    _helped = false;
+    _checkFillable();
   });
+
+  void _openOptions() {
+    showModalBottomSheet<void>(
+      context: context,
+      // Lets the sheet grow past half the screen to fit every option.
+      isScrollControlled: true,
+      builder: (_) => OptionsSheet(
+        options: _options,
+        onChanged: () => setState(() {
+          // Turning help on mid-game counts, even without making a move.
+          if (_options.anyHelp && _game.moveCount > 0 && !_game.isOver) {
+            _helped = true;
+          }
+          _checkFillable();
+        }),
+      ),
+    );
+  }
 
   HighScore _score(String name) => HighScore(
     name: name,
@@ -90,6 +182,7 @@ class _GameScreenState extends State<GameScreen> {
   );
 
   Future<void> _offerSave() async {
+    _saveTimer?.cancel();
     final table = await _store.load();
     final lastName = await _store.lastName();
     if (!mounted) return;
@@ -99,7 +192,8 @@ class _GameScreenState extends State<GameScreen> {
         squares: _game.moveCount,
         total: _game.squareCount,
         closed: _game.isClosed,
-        qualifies: table.qualifies(_score('')),
+        helped: _helped,
+        qualifies: !_helped && table.qualifies(_score('')),
         canUndo: _canUndo,
         initialName: lastName,
       ),
@@ -143,6 +237,37 @@ class _GameScreenState extends State<GameScreen> {
     return 'Move ${_game.moveCount} / ${_game.squareCount}';
   }
 
+  /// Small icon and text for the line under the status.
+  static List<Widget> _note(
+    ThemeData theme,
+    IconData icon,
+    String text, [
+    Color? color,
+  ]) {
+    color ??= theme.colorScheme.outline;
+    return [
+      Icon(icon, size: 16, color: color),
+      Text(text, style: theme.textTheme.bodySmall?.copyWith(color: color)),
+    ];
+  }
+
+  List<Widget> _fillableNote(ThemeData theme) => switch (_fillable) {
+    null => _note(theme, Icons.hourglass_empty, 'Checking…'),
+    Fillable.yes => _note(
+      theme,
+      Icons.check_circle_outline,
+      'Can still be filled',
+      theme.colorScheme.primary,
+    ),
+    Fillable.no => _note(
+      theme,
+      Icons.cancel_outlined,
+      "Can't be filled anymore",
+      theme.colorScheme.error,
+    ),
+    Fillable.unknown => _note(theme, Icons.help_outline, 'Hard to tell'),
+  };
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -179,6 +304,11 @@ class _GameScreenState extends State<GameScreen> {
         ),
         actions: [
           IconButton(
+            tooltip: 'Options',
+            icon: const Icon(Icons.tune),
+            onPressed: _openOptions,
+          ),
+          IconButton(
             tooltip: 'High scores',
             icon: const Icon(Icons.emoji_events_outlined),
             onPressed: _openHighScores,
@@ -200,12 +330,41 @@ class _GameScreenState extends State<GameScreen> {
                       fontWeight: _game.isOver ? FontWeight.bold : null,
                     ),
                   ),
+                  // Space is kept even when empty, so the board doesn't jump.
+                  SizedBox(
+                    height: 22,
+                    child: _helped
+                        ? FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Row(
+                              spacing: 4,
+                              children: [
+                                ..._note(
+                                  theme,
+                                  Icons.lightbulb_outline,
+                                  'Playing with help',
+                                ),
+                                if (_showFillable) ...[
+                                  const SizedBox(width: 4),
+                                  ..._fillableNote(theme),
+                                ],
+                              ],
+                            ),
+                          )
+                        : null,
+                  ),
                   const SizedBox(height: 16),
                   Expanded(
                     child: Center(
                       child: BoardView(
                         game: _game,
                         rejectedIndex: _rejectedIndex,
+                        showPath:
+                            _options.pathWhilePlaying ||
+                            (_options.pathAtEnd && _game.isOver),
+                        highlightMoves: _options.highlightMoves,
+                        countExits: _options.countExits,
+                        markDead: _options.markDead,
                         onTap: _onSquareTap,
                       ),
                     ),
@@ -221,7 +380,7 @@ class _GameScreenState extends State<GameScreen> {
                           label: _fit('Undo (${_game.undosLeft})'),
                         ),
                       ),
-                      if (_game.isOver && !_scoreSaved)
+                      if (_game.isOver && !_scoreSaved && !_helped)
                         Expanded(
                           child: FilledButton.tonalIcon(
                             onPressed: _offerSave,

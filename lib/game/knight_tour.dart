@@ -42,6 +42,9 @@ class KnightTour {
   int? get current => _path.isEmpty ? null : _path.last;
   int? get start => _path.isEmpty ? null : _path.first;
 
+  /// Visited squares in the order they were visited.
+  List<int> get path => List.unmodifiable(_path);
+
   /// Move number on [index], or 0 if not visited yet.
   int numberAt(int index) => _board[index];
 
@@ -61,14 +64,22 @@ class KnightTour {
       _path.isNotEmpty && !isComplete && _undosLeft > 0 && !_justUndid;
 
   /// Unvisited squares reachable from [index] with one knight move.
-  List<int> legalMovesFrom(int index) {
-    final row = index ~/ size, col = index % size;
-    return [
-      for (final (dr, dc) in _jumps)
-        if (_onBoard(row + dr, col + dc) &&
-            _board[(row + dr) * size + col + dc] == 0)
-          (row + dr) * size + col + dc,
-    ];
+  List<int> legalMovesFrom(int index) => [
+    for (final n in _neighbours(index))
+      if (_board[n] == 0) n,
+  ];
+
+  /// Unvisited squares the knight can never reach again: every square a
+  /// knight move away is already visited, and none of them is the knight's
+  /// square. Once there is one, the board can't be filled.
+  Set<int> get deadSquares {
+    if (current == null) return {};
+    return {
+      for (var i = 0; i < squareCount; i++)
+        if (_board[i] == 0 &&
+            !_neighbours(i).any((n) => _board[n] == 0 || n == current))
+          i,
+    };
   }
 
   /// Tries to visit [index]. Returns false (and changes nothing) if the move is
@@ -96,6 +107,14 @@ class KnightTour {
     _path.clear();
     _undosLeft = maxUndos;
     _justUndid = false;
+  }
+
+  /// All squares a knight move away from [index], visited or not.
+  Iterable<int> _neighbours(int index) sync* {
+    final row = index ~/ size, col = index % size;
+    for (final (dr, dc) in _jumps) {
+      if (_onBoard(row + dr, col + dc)) yield (row + dr) * size + col + dc;
+    }
   }
 
   bool _onBoard(int row, int col) =>

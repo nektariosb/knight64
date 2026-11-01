@@ -7,6 +7,7 @@ class SaveScoreDialog extends StatefulWidget {
     required this.squares,
     required this.total,
     required this.closed,
+    required this.helped,
     required this.qualifies,
     required this.canUndo,
     required this.initialName,
@@ -15,6 +16,9 @@ class SaveScoreDialog extends StatefulWidget {
   final int squares;
   final int total;
   final bool closed;
+
+  /// A help option was used, so the score can't be saved.
+  final bool helped;
 
   /// Whether the score is good enough for the high score list.
   final bool qualifies;
@@ -50,13 +54,26 @@ class _SaveScoreDialogState extends State<SaveScoreDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final score = Text(
-      '${widget.squares} / ${widget.total}',
-      textAlign: TextAlign.center,
-      style: theme.textTheme.displaySmall?.copyWith(
-        color: theme.colorScheme.primary,
-        fontWeight: FontWeight.bold,
-      ),
+    final score = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '${widget.squares} / ${widget.total}',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.displaySmall?.copyWith(
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        if (widget.closed) ...[
+          const SizedBox(height: 8),
+          const Text(
+            'Your last square is one knight jump from square 1, '
+            'so your tour makes a full loop.',
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ],
     );
 
     if (!widget.qualifies) {
@@ -67,7 +84,14 @@ class _SaveScoreDialogState extends State<SaveScoreDialog> {
           children: [
             score,
             const SizedBox(height: 12),
-            const Text('Not enough for the high scores this time.'),
+            Text(
+              widget.helped
+                  ? "You played with help, so this game can't enter the "
+                        'high scores. Turn help off in Options to go for a '
+                        'high score!'
+                  : 'Not enough for the high scores this time.',
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
         actions: [
