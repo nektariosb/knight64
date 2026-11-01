@@ -11,9 +11,13 @@ class Options {
   static const _markDeadKey = 'mark_dead';
   static const _checkFillableKey = 'check_fillable';
   static const _boardKey = 'board';
+  static const _puzzleKey = 'puzzle';
 
   /// Id of the board to play on.
   String board = Board.standard.id;
+
+  /// Id of the puzzle being played, or null when playing a plain board.
+  String? puzzle;
 
   /// Draw the knight's path when a game ends. Not a help: the game is over.
   bool pathAtEnd = true;
@@ -48,6 +52,7 @@ class Options {
     markDead = prefs.getBool(_markDeadKey) ?? false;
     checkFillable = prefs.getBool(_checkFillableKey) ?? false;
     board = Board.byId(prefs.getString(_boardKey)).id;
+    puzzle = prefs.getString(_puzzleKey);
   }
 
   Future<void> save() async {
@@ -59,5 +64,10 @@ class Options {
     await prefs.setBool(_markDeadKey, markDead);
     await prefs.setBool(_checkFillableKey, checkFillable);
     await prefs.setString(_boardKey, board);
+    if (puzzle case final id?) {
+      await prefs.setString(_puzzleKey, id);
+    } else {
+      await prefs.remove(_puzzleKey);
+    }
   }
 }

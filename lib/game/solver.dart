@@ -6,6 +6,9 @@ enum Fillable { yes, no, unknown }
 
 /// Whether a knight on [current] can still visit every square that is not
 /// [visited] on a [size] x [size] board (flat indexes, as in `KnightTour`).
+/// In a puzzle, [clues] maps a number of jumps from now to the square the
+/// knight must land on after exactly that many jumps (see
+/// `KnightTour.cluesAhead`). Other jumps can't land on those squares.
 ///
 /// Searches with Warnsdorff's rule (try squares with the fewest exits first)
 /// and backtracking, skipping positions that can be ruled out early. Short
@@ -15,9 +18,16 @@ enum Fillable { yes, no, unknown }
 ///
 /// Takes one record so it can be passed straight to Flutter's `compute`.
 Fillable canFill(
-  ({int size, List<bool> visited, int current, int maxSteps}) args,
+  ({
+    int size,
+    List<bool> visited,
+    int current,
+    Map<int, int> clues,
+    int maxSteps,
+  })
+  args,
 ) {
-  final search = _Search(args.size, args.visited);
+  final search = _Search(args.size, args.visited, args.current, args.clues);
   if (!search.parityOk(args.current)) return Fillable.no;
   var budget = 2000, used = 0;
   while (true) {
@@ -33,18 +43,47 @@ Fillable canFill(
   }
 }
 
+/// How many ways there are to finish the tour, as for [canFill], counting
+/// no further than [limit]. Used to check that a puzzle has exactly one
+/// solution (limit 2). Null if it gave up after [maxSteps] positions.
+int? countTours(
+  ({
+    int size,
+    List<bool> visited,
+    int current,
+    Map<int, int> clues,
+    int limit,
+    int maxSteps,
+  })
+  args,
+) {
+  final search = _Search(args.size, args.visited, args.current, args.clues);
+  if (!search.parityOk(args.current)) return 0;
+  try {
+    search.run(args.current, args.maxSteps, limit: args.limit);
+    return search.found;
+  } on _GaveUp {
+    return null;
+  }
+}
+
 class _GaveUp implements Exception {
   const _GaveUp();
 }
 
 class _Search {
-  _Search(this.size, List<bool> visited)
+  _Search(this.size, List<bool> visited, int current, this.clues)
     : visited = List.of(visited),
       neighbours = [
         for (var i = 0; i < size * size; i++) _knightMoves(i, size),
-      ] {
+      ],
+      clueSquares = Uint8List(size * size) {
     for (var i = 0; i < visited.length; i++) {
       if (visited[i]) _bits[i ~/ 30] ^= 1 << (i % 30);
+    }
+    for (final square in clues.values) {
+      clueSquares[square] = 1;
+      _distances[square] = _distancesFrom(square, current);
     }
   }
 
@@ -52,7 +91,23 @@ class _Search {
   final List<bool> visited;
   final List<List<int>> neighbours;
 
+  /// Jumps from the starting square -> square to land on after them.
+  final Map<int, int> clues;
+
+  /// 1 on squares in [clues], so other jumps can't land there.
+  final Uint8List clueSquares;
+
+  /// Fewest jumps from each clue square to every square, through squares
+  /// that were free at the start.
+  final _distances = <int, List<int>>{};
+
   int _steps = 0, _maxSteps = 0;
+
+  /// Jumps the tour still had to make when the search started.
+  int _startRemaining = 0;
+
+  /// Finished tours found, and how many to look for.
+  int found = 0, _limit = 1;
 
   /// The visited squares as bits, 30 per word (so it also works on the web,
   /// where ints are smaller). Four words cover boards up to 10x10.
@@ -90,6 +145,25 @@ class _Search {
     ];
   }
 
+  /// Breadth-first search from [from] through the free squares (and the
+  /// knight's square). Squares it can't reach get a huge distance.
+  List<int> _distancesFrom(int from, int current) {
+    final distances = List.filled(visited.length, 1 << 20);
+    distances[from] = 0;
+    final queue = [from];
+    for (var i = 0; i < queue.length; i++) {
+      final square = queue[i];
+      for (final n in neighbours[square]) {
+        if ((visited[n] && n != current) || distances[n] <= distances[square]) {
+          continue;
+        }
+        distances[n] = distances[square] + 1;
+        queue.add(n);
+      }
+    }
+    return distances;
+  }
+
   int _colour(int index) => (index ~/ size + index % size) % 2;
 
   int get _remaining => visited.where((v) => !v).length;
@@ -108,10 +182,15 @@ class _Search {
     _noise = [for (final _ in visited) _random.nextDouble()];
   }
 
-  bool run(int current, int maxSteps) {
+  /// Searches until [limit] tours are found (true) or every way has been
+  /// tried (false). [found] says how many were found.
+  bool run(int current, int maxSteps, {int limit = 1}) {
     _steps = 0;
     _maxSteps = maxSteps;
-    return _search(current, _remaining);
+    found = 0;
+    _limit = limit;
+    _startRemaining = _remaining;
+    return _search(current, _startRemaining);
   }
 
   void _setVisited(int index, bool value) {
@@ -138,13 +217,24 @@ class _Search {
     return dr * dr + dc * dc;
   }
 
+  /// Every clue square still ahead must be close enough to reach in time.
+  bool _cluesInReach(int pos, int jumps) {
+    for (final MapEntry(key: at, value: square) in clues.entries) {
+      if (at > jumps && _distances[square]![pos] > at - jumps) return false;
+    }
+    return true;
+  }
+
   bool _search(int pos, int remaining) {
-    if (remaining == 0) return true;
+    if (remaining == 0) return ++found >= _limit;
     if (++_steps > _maxSteps) throw const _GaveUp();
+    final jumps = _startRemaining - remaining;
+    if (!_cluesInReach(pos, jumps)) return false;
     final key = (_bits[0], _bits[1], _bits[2], _bits[3], pos);
     if (_failed.contains(key)) return false;
 
-    final allowed = _allowedMoves(pos, remaining);
+    final foundBefore = found;
+    final allowed = _allowedMoves(pos, remaining, jumps);
     if (allowed != null) {
       final moves = [
         for (final n in allowed) (square: n, exits: _exits(n), away: _away(n)),
@@ -162,15 +252,17 @@ class _Search {
         }
       }
     }
-    // Only reached when every move was searched to the end, so it's proven.
-    _failed.add(key);
+    // Only reached when every move was searched to the end, so it's proven
+    // that no tour, or no other tour, goes through here. A tour found here
+    // could be found again through another move order, so that's not a fail.
+    if (found == foundBefore) _failed.add(key);
     return false;
   }
 
   /// Quick checks that rule out many positions without searching them.
   /// Returns the knight's moves that are still worth trying, or null if the
-  /// position can't be filled.
-  List<int>? _allowedMoves(int pos, int remaining) {
+  /// position can't be filled. [jumps] were made since the search started.
+  List<int>? _allowedMoves(int pos, int remaining, int jumps) {
     final next = neighbours[pos];
     // A square with a single way in or out has to be the last square of the
     // tour, and there is only one last square.
@@ -184,10 +276,30 @@ class _Search {
         _lastSquare = i;
       }
     }
+    // In a puzzle, the last square may be given.
+    final lastClue = clues[_startRemaining];
+    if (lastClue != null) {
+      if (_lastSquare != null && _lastSquare != lastClue) return null;
+      _lastSquare = lastClue;
+    }
     if (!_forcedLinks.check(pos, remaining)) return null;
-    _lastSquare ??= _forcedLinks.lastSquare;
+    final forcedLast = _forcedLinks.lastSquare;
+    if (forcedLast != null &&
+        _lastSquare != null &&
+        forcedLast != _lastSquare) {
+      return null;
+    }
+    _lastSquare ??= forcedLast;
     if (!_bridges.check(pos, _lastSquare, remaining)) return null;
-    return _forcedLinks.movesFrom(pos);
+    final moves = _forcedLinks.movesFrom(pos);
+    if (clues.isEmpty) return moves;
+    // The next square may be given; otherwise keep off the given squares.
+    final clue = clues[jumps + 1];
+    if (clue != null) return moves.contains(clue) ? [clue] : null;
+    return [
+      for (final m in moves)
+        if (clueSquares[m] == 0) m,
+    ];
   }
 
   // Reused at every position, to save allocating them each time.

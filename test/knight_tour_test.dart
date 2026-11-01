@@ -133,4 +133,66 @@ void main() {
     expect(small.isStuck, isTrue);
     expect(small.tryMove(0), isFalse);
   });
+
+  group('puzzle clues', () {
+    // 3x3 ring: 0 5 6 1 8 3 2 7 one way round, 0 7 2 3 8 1 6 5 the other.
+    KnightTour ring(Map<int, int> clues) =>
+        KnightTour(size: 3, holes: {4}, clues: clues, maxUndos: null);
+
+    test('move 1 must start on square 1 when it is given', () {
+      final game = ring({0: 1});
+      expect(game.tryMove(2), isFalse);
+      expect(game.tryMove(0), isTrue);
+    });
+
+    test('a given square only takes its own move number', () {
+      final game = ring({0: 1, 5: 8})..tryMove(0);
+      // 5 is a knight move away, but it's saved for move 8.
+      expect(game.legalMovesFrom(0), [7]);
+      expect(game.tryMove(5), isFalse);
+      expect(game.tryMove(7), isTrue);
+    });
+
+    test('when the next number is given, only that square is allowed', () {
+      final game = ring({0: 1, 7: 2});
+      game.tryMove(0);
+      expect(game.legalMovesFrom(0), [7]);
+      expect(game.tryMove(5), isFalse);
+      expect(game.tryMove(7), isTrue);
+    });
+
+    test('a given square can leave the knight stuck', () {
+      // From 5, the only free square is 6, but 6 is saved for move 4.
+      final game = ring({0: 1, 6: 4})..tryMove(0);
+      game.tryMove(5);
+      expect(game.legalMovesFrom(5), isEmpty);
+      expect(game.isStuck, isTrue);
+    });
+
+    test('legal moves can be asked for a later move number', () {
+      final game = ring({0: 1, 6: 3})..tryMove(0);
+      expect(game.legalMovesFrom(5, 3), [6]);
+      expect(game.legalMovesFrom(5, 4), isEmpty);
+    });
+
+    test('clues ahead count jumps from the knight', () {
+      final game = ring({0: 1, 6: 3, 7: 8})..tryMove(0);
+      expect(game.cluesAhead, {2: 6, 7: 7});
+      game.tryMove(5);
+      expect(game.cluesAhead, {1: 6, 6: 7});
+    });
+
+    test('unlimited undo can be chained', () {
+      final game = ring({0: 1})
+        ..tryMove(0)
+        ..tryMove(5)
+        ..tryMove(6);
+      expect(game.undosLeft, isNull);
+      for (var i = 0; i < 3; i++) {
+        expect(game.undo(), isTrue);
+      }
+      expect(game.moveCount, 0);
+      expect(game.canUndo, isFalse);
+    });
+  });
 }

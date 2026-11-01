@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:knight64/game/knight_tour.dart';
+import 'package:knight64/game/puzzle_list.dart';
+import 'package:knight64/game/puzzles.dart';
 import 'package:knight64/main.dart';
 import 'package:knight64/ui/board_view.dart';
 import 'package:knight64/ui/celebration.dart';
 import 'package:knight64/ui/info_screen.dart';
 import 'package:knight64/ui/options_sheet.dart';
+import 'package:knight64/ui/puzzle_picker.dart';
 import 'package:knight64/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -383,6 +387,115 @@ void main() {
     expect(find.byType(Celebration), findsNothing);
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  group('puzzles', () {
+    /// The solution of [puzzle], by plain backtracking (for small boards).
+    List<int> solve(Puzzle puzzle) {
+      final board = puzzle.board;
+      final game = KnightTour(
+        size: board.size,
+        holes: board.holes,
+        clues: puzzle.clues,
+        maxUndos: null,
+      );
+      bool search() {
+        if (game.isComplete) return true;
+        final moves = game.current == null
+            ? [
+                for (final e in puzzle.clues.entries)
+                  if (e.value == 1) e.key,
+              ]
+            : game.legalMovesFrom(game.current!);
+        for (final move in moves) {
+          game.tryMove(move);
+          if (search()) return true;
+          game.undo();
+        }
+        return false;
+      }
+
+      expect(search(), isTrue);
+      return game.path;
+    }
+
+    Future<void> pickPuzzle(WidgetTester tester, int number) async {
+      await tester.tap(find.byTooltip('Puzzles'));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Puzzle $number'),
+        200,
+        scrollable: find
+            .descendant(
+              of: find.byType(PuzzlePicker),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.tap(find.text('Puzzle $number'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('solving a puzzle ticks it and offers the next one', (
+      tester,
+    ) async {
+      await startApp(tester);
+      await pickPuzzle(tester, 1);
+      expect(find.text('Puzzle 1'), findsOneWidget);
+      expect(find.text('Tap square 1 to start'), findsOneWidget);
+      expect(find.text('Undo'), findsOneWidget);
+
+      final puzzle = puzzles.first;
+      final size = puzzle.board.size;
+      for (final i in solve(puzzle)) {
+        await tapSquare(tester, i ~/ size, i % size, size: size);
+      }
+      expect(find.text('Puzzle solved!'), findsWidgets);
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(Celebration.bannerTime);
+      await tester.pumpAndSettle();
+      expect(find.text('Puzzle 1 solved!'), findsOneWidget);
+      expect(find.text('Your name'), findsNothing);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getStringList('puzzles_solved'), [puzzle.id]);
+
+      await tester.tap(find.text('Next puzzle'));
+      await tester.pumpAndSettle();
+      expect(find.text('Puzzle 2'), findsOneWidget);
+      expect(prefs.getString('puzzle'), puzzles[1].id);
+    });
+
+    testWidgets('a given square refuses the wrong move number', (tester) async {
+      await startApp(tester);
+      await pickPuzzle(tester, 2);
+      final puzzle = puzzles[1];
+      final size = puzzle.board.size;
+      // Any given square other than 1 can't be the first move.
+      final other = puzzle.clues.entries.firstWhere((e) => e.value != 1).key;
+      await tapSquare(tester, other ~/ size, other % size, size: size);
+      expect(find.text('Tap square 1 to start'), findsOneWidget);
+      final start = puzzle.clues.entries.firstWhere((e) => e.value == 1).key;
+      await tapSquare(tester, start ~/ size, start % size, size: size);
+      expect(find.text('Move 1 / ${puzzle.board.total}'), findsOneWidget);
+    });
+
+    testWidgets('the app comes back to the puzzle, a board leaves it', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({'puzzle': puzzles[2].id});
+      await startApp(tester);
+      expect(find.text('Puzzle 3'), findsOneWidget);
+
+      // Picking the puzzle's own board still leaves the puzzle.
+      await tester.tap(find.byTooltip('Board: ${puzzles[2].board.name}'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(puzzles[2].board.name).last);
+      await tester.pumpAndSettle();
+      expect(find.text("Knight's Tour"), findsOneWidget);
+      expect(find.text('Undo (3)'), findsOneWidget);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('puzzle'), isNull);
+    });
   });
 
   testWidgets('sound button turns sound off and remembers it', (tester) async {

@@ -14,10 +14,14 @@ class Celebration extends StatefulWidget {
     super.key,
     required this.closed,
     required this.total,
+    this.puzzle = false,
     this.onDone,
   });
 
   final bool closed;
+
+  /// The board was a puzzle, so the banner says it's solved.
+  final bool puzzle;
 
   /// Number of squares filled, for the banner.
   final int total;
@@ -108,20 +112,29 @@ class _CelebrationState extends State<Celebration>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  closed ? 'Closed tour!' : 'Tour complete!',
+                  widget.puzzle
+                      ? 'Puzzle solved!'
+                      : closed
+                      ? 'Closed tour!'
+                      : 'Tour complete!',
                   style: theme.textTheme.headlineMedium?.copyWith(
                     color: foreground,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  closed
-                      ? 'You filled all ${widget.total} squares, and the '
-                            'knight can jump from the last one back to '
-                            'square 1. A full loop!'
-                      : 'You filled all ${widget.total} squares!',
-                ),
+                Text(switch ((widget.puzzle, closed)) {
+                  (true, true) =>
+                    'You found the only tour that fits, and the knight can '
+                        'jump from the last square back to square 1. '
+                        'A full loop!',
+                  (true, false) => 'You found the only tour that fits!',
+                  (false, true) =>
+                    'You filled all ${widget.total} squares, and the '
+                        'knight can jump from the last one back to '
+                        'square 1. A full loop!',
+                  (false, false) => 'You filled all ${widget.total} squares!',
+                }),
               ],
             ),
           ),

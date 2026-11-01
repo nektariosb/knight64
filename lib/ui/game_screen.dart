@@ -8,6 +8,8 @@ import '../game/boards.dart';
 import '../game/high_scores.dart';
 import '../game/knight_tour.dart';
 import '../game/options.dart';
+import '../game/puzzle_list.dart';
+import '../game/puzzles.dart';
 import '../game/solver.dart';
 import 'board_picker.dart';
 import 'board_view.dart';
@@ -15,6 +17,7 @@ import 'celebration.dart';
 import 'high_scores_screen.dart';
 import 'info_screen.dart';
 import 'options_sheet.dart';
+import 'puzzle_picker.dart';
 import 'save_score_dialog.dart';
 import 'sounds.dart';
 import 'theme.dart';
@@ -31,9 +34,13 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   var _board = Board.standard;
   var _game = KnightTour();
+
+  /// The puzzle being played, or null on a plain board.
+  Puzzle? _puzzle;
   final _sounds = Sounds();
   final _store = HighScoreStore();
   final _options = Options();
+  final _progress = PuzzleProgress();
   int? _rejectedIndex;
   Timer? _flashTimer;
 
@@ -87,6 +94,7 @@ class _GameScreenState extends State<GameScreen> {
           _game.numberAt(i) > 0 || _game.isHole(i),
       ],
       current: _game.current!,
+      clues: _game.cluesAhead,
       // The web has no background threads, so keep the check short there.
       maxSteps: kIsWeb ? 30000 : 200000,
     )).then((result) {
@@ -108,11 +116,17 @@ class _GameScreenState extends State<GameScreen> {
     _sounds.load().then((_) {
       if (mounted) setState(() {});
     });
+    _progress.load();
     _options.load().then((_) {
       if (!mounted) return;
       setState(() {
-        if (_options.board != _board.id && _game.moveCount == 0) {
-          _setBoard(Board.byId(_options.board));
+        if (_game.moveCount == 0) {
+          final puzzle = puzzles.where((p) => p.id == _options.puzzle);
+          if (puzzle.isNotEmpty) {
+            _setPuzzle(puzzle.first);
+          } else if (_options.board != _board.id) {
+            _setBoard(Board.byId(_options.board));
+          }
         }
         _checkFillable();
       });
@@ -134,7 +148,10 @@ class _GameScreenState extends State<GameScreen> {
         _helped |= _options.anyHelp;
         _checkFillable();
       });
-      if (_game.isOver && !_gameOverShown) {
+      // A stuck puzzle has no score to save: the player can undo instead.
+      if (_game.isOver &&
+          !_gameOverShown &&
+          (_game.isComplete || _puzzle == null)) {
         _gameOverShown = true;
         // Waits for the path to draw, unless it was already on the board.
         _saveTimer = Timer(
@@ -156,11 +173,50 @@ class _GameScreenState extends State<GameScreen> {
     });
   }
 
-  /// Full board: fanfare and confetti, then the save dialog.
+  /// Full board: fanfare and confetti, then the save dialog (or for a
+  /// puzzle, the way to the next one).
   void _celebrate() {
     _sounds.fanfare(closed: _game.isClosed);
     setState(() => _celebrating = true);
-    _saveTimer = Timer(Celebration.bannerTime, _offerSave);
+    final puzzle = _puzzle;
+    if (puzzle == null) {
+      _saveTimer = Timer(Celebration.bannerTime, _offerSave);
+      return;
+    }
+    _progress.markSolved(puzzle);
+    _saveTimer = Timer(Celebration.bannerTime, () => _puzzleSolved(puzzle));
+  }
+
+  Future<void> _puzzleSolved(Puzzle puzzle) async {
+    final number = puzzles.indexOf(puzzle) + 1;
+    final next = number < puzzles.length ? puzzles[number] : null;
+    final goOn = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Puzzle $number solved!'),
+        content: Text(
+          next == null
+              ? "That was the last puzzle. You've solved "
+                    '${_progress.solved.length} of ${puzzles.length}!'
+              : "You've solved ${_progress.solved.length} of "
+                    '${puzzles.length} puzzles.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('OK'),
+          ),
+          if (next != null)
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Next puzzle'),
+            ),
+        ],
+      ),
+    );
+    if (goOn == true && next != null && mounted && _puzzle == puzzle) {
+      _startPuzzle(next);
+    }
   }
 
   void _undo() => setState(() {
@@ -215,9 +271,31 @@ class _GameScreenState extends State<GameScreen> {
 
   /// Starts a new game on [board]. Call inside setState.
   void _setBoard(Board board) {
+    _puzzle = null;
     _board = board;
     _game = KnightTour(size: board.size, holes: board.holes);
     _newGame();
+  }
+
+  /// Starts [puzzle], with as many undos as the player likes. Call inside
+  /// setState.
+  void _setPuzzle(Puzzle puzzle) {
+    _puzzle = puzzle;
+    _board = puzzle.board;
+    _game = KnightTour(
+      size: _board.size,
+      holes: _board.holes,
+      clues: puzzle.clues,
+      maxUndos: null,
+    );
+    _newGame();
+  }
+
+  /// Switches to [puzzle] and remembers it for next time.
+  void _startPuzzle(Puzzle puzzle) {
+    _options.puzzle = puzzle.id;
+    _options.save();
+    setState(() => _setPuzzle(puzzle));
   }
 
   /// Resets everything about the game except the board itself.
@@ -234,9 +312,12 @@ class _GameScreenState extends State<GameScreen> {
     final board = await showModalBottomSheet<Board>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => BoardPicker(current: _board),
+      // A long list fills the screen; keep it clear of the status bar.
+      useSafeArea: true,
+      builder: (_) => BoardPicker(current: _puzzle == null ? _board : null),
     );
-    if (board == null || board == _board || !mounted) return;
+    if (board == null || !mounted) return;
+    if (board == _board && _puzzle == null) return;
     if (!await _confirmNewGame(
       title: 'Switch to ${board.name}?',
       text: "You're in the middle of a game. A new board starts a new game.",
@@ -244,9 +325,29 @@ class _GameScreenState extends State<GameScreen> {
     )) {
       return;
     }
-    _options.board = board.id;
-    _options.save();
+    _options
+      ..board = board.id
+      ..puzzle = null
+      ..save();
     setState(() => _setBoard(board));
+  }
+
+  Future<void> _choosePuzzle() async {
+    final puzzle = await showModalBottomSheet<Puzzle>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => PuzzlePicker(progress: _progress, current: _puzzle),
+    );
+    if (puzzle == null || puzzle == _puzzle || !mounted) return;
+    if (!await _confirmNewGame(
+      title: 'Start puzzle ${puzzles.indexOf(puzzle) + 1}?',
+      text: "You're in the middle of a game. A puzzle starts a new game.",
+      confirm: 'Start puzzle',
+    )) {
+      return;
+    }
+    _startPuzzle(puzzle);
   }
 
   void _openOptions() {
@@ -320,6 +421,12 @@ class _GameScreenState extends State<GameScreen> {
       FittedBox(fit: BoxFit.scaleDown, child: Text(text, maxLines: 1));
 
   String get _status {
+    if (_puzzle != null) {
+      if (_game.isComplete) return 'Puzzle solved!';
+      if (_game.isStuck) return 'Stuck! Undo and try another way';
+      if (_game.moveCount == 0) return 'Tap square 1 to start';
+      return 'Move ${_game.moveCount} / ${_game.total}';
+    }
     if (_game.isComplete) {
       return _game.isClosed
           ? 'Closed tour! All ${_game.total} squares'
@@ -364,73 +471,80 @@ class _GameScreenState extends State<GameScreen> {
   };
 
   /// "Playing with help", plus the fill check's answer when that's on.
+  /// Puzzles have no high scores, so there help is just the fill check.
   Widget? _helpNote(ThemeData theme) {
-    if (!_helped) return null;
+    final puzzle = _puzzle != null;
+    if (!_helped || (puzzle && !_showFillable)) return null;
     return FittedBox(
       fit: BoxFit.scaleDown,
       child: Row(
         spacing: 4,
         children: [
-          ..._note(theme, Icons.lightbulb_outline, 'Playing with help'),
-          if (_showFillable) ...[
-            const SizedBox(width: 4),
-            ..._fillableNote(theme),
-          ],
+          if (!puzzle)
+            ..._note(theme, Icons.lightbulb_outline, 'Playing with help'),
+          if (!puzzle && _showFillable) const SizedBox(width: 4),
+          if (_showFillable) ..._fillableNote(theme),
         ],
       ),
     );
   }
 
-  /// The icon buttons under the board, spread evenly.
+  /// The icon buttons under the board, spread evenly. On a narrow screen
+  /// they get a bit smaller rather than overflow.
   Widget _toolbar() => Row(
     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-    children: [
-      IconButton(
-        tooltip: 'Board: ${_board.name}',
-        icon: const Icon(Icons.grid_on),
-        onPressed: _chooseBoard,
-      ),
-      IconButton(
-        tooltip: widget.themeController.isDark ? 'Light mode' : 'Dark mode',
-        icon: Icon(
-          widget.themeController.isDark
-              ? Icons.light_mode_outlined
-              : Icons.dark_mode_outlined,
-        ),
-        onPressed: widget.themeController.toggle,
-      ),
-      IconButton(
-        tooltip: _sounds.enabled ? 'Sound off' : 'Sound on',
-        icon: Icon(
-          _sounds.enabled
-              ? Icons.volume_up_outlined
-              : Icons.volume_off_outlined,
-        ),
-        onPressed: () async {
-          await _sounds.toggle();
-          if (mounted) setState(() {});
-        },
-      ),
-      IconButton(
-        tooltip: "About the Knight's Tour",
-        icon: const Icon(Icons.info_outline),
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute<void>(builder: (_) => const InfoScreen()),
-        ),
-      ),
-      IconButton(
-        tooltip: 'Options',
-        icon: const Icon(Icons.tune),
-        onPressed: _openOptions,
-      ),
-      IconButton(
-        tooltip: 'High scores',
-        icon: const Icon(Icons.emoji_events_outlined),
-        onPressed: _openHighScores,
-      ),
-    ],
+    children: [for (final button in _toolbarButtons()) Flexible(child: button)],
   );
+
+  List<Widget> _toolbarButtons() => [
+    IconButton(
+      tooltip: 'Board: ${_board.name}',
+      icon: const Icon(Icons.grid_on),
+      onPressed: _chooseBoard,
+    ),
+    IconButton(
+      tooltip: 'Puzzles',
+      icon: const Icon(Icons.extension_outlined),
+      onPressed: _choosePuzzle,
+    ),
+    IconButton(
+      tooltip: widget.themeController.isDark ? 'Light mode' : 'Dark mode',
+      icon: Icon(
+        widget.themeController.isDark
+            ? Icons.light_mode_outlined
+            : Icons.dark_mode_outlined,
+      ),
+      onPressed: widget.themeController.toggle,
+    ),
+    IconButton(
+      tooltip: _sounds.enabled ? 'Sound off' : 'Sound on',
+      icon: Icon(
+        _sounds.enabled ? Icons.volume_up_outlined : Icons.volume_off_outlined,
+      ),
+      onPressed: () async {
+        await _sounds.toggle();
+        if (mounted) setState(() {});
+      },
+    ),
+    IconButton(
+      tooltip: "About the Knight's Tour",
+      icon: const Icon(Icons.info_outline),
+      onPressed: () => Navigator.push(
+        context,
+        MaterialPageRoute<void>(builder: (_) => const InfoScreen()),
+      ),
+    ),
+    IconButton(
+      tooltip: 'Options',
+      icon: const Icon(Icons.tune),
+      onPressed: _openOptions,
+    ),
+    IconButton(
+      tooltip: 'High scores',
+      icon: const Icon(Icons.emoji_events_outlined),
+      onPressed: _openHighScores,
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -443,6 +557,7 @@ class _GameScreenState extends State<GameScreen> {
             child: Celebration(
               closed: _game.isClosed,
               total: _game.total,
+              puzzle: _puzzle != null,
               onDone: () => setState(() => _celebrating = false),
             ),
           ),
@@ -452,7 +567,13 @@ class _GameScreenState extends State<GameScreen> {
 
   Widget _screen(ThemeData theme) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Knight's Tour")),
+      appBar: AppBar(
+        title: Text(
+          _puzzle == null
+              ? "Knight's Tour"
+              : 'Puzzle ${puzzles.indexOf(_puzzle!) + 1}',
+        ),
+      ),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -509,10 +630,17 @@ class _GameScreenState extends State<GameScreen> {
                         child: OutlinedButton.icon(
                           onPressed: _canUndo ? _undo : null,
                           icon: const Icon(Icons.undo),
-                          label: _fit('Undo (${_game.undosLeft})'),
+                          label: _fit(
+                            _game.undosLeft == null
+                                ? 'Undo'
+                                : 'Undo (${_game.undosLeft})',
+                          ),
                         ),
                       ),
-                      if (_game.isOver && !_scoreSaved && !_helped)
+                      if (_game.isOver &&
+                          !_scoreSaved &&
+                          !_helped &&
+                          _puzzle == null)
                         Expanded(
                           child: FilledButton.tonalIcon(
                             onPressed: _offerSave,

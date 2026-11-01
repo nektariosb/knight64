@@ -11,6 +11,7 @@ Fillable fromStart(Board board, int start) => canFill((
       i == start || board.holes.contains(i),
   ],
   current: start,
+  clues: const {},
   maxSteps: 200000,
 ));
 

@@ -45,17 +45,37 @@ class InfoScreen extends StatelessWidget {
                 'gets the next number.',
               ),
               const _Point(
+                'Some boards have holes, drawn with stripes. The knight '
+                "can't land on a hole, and doesn't need to visit it.",
+              ),
+              const _Point(
                 'When the knight has nowhere left to jump, the game '
-                'is over. Can you reach 64?',
+                'is over. Can you fill the whole board? On the 8×8 '
+                'chessboard, that means reaching 64.',
               ),
               const _Point(
                 'Made a mistake? You can undo 3 times per game, '
                 'but not twice in a row.',
               ),
 
+              const _Heading('Puzzles'),
+              const _Point(
+                'Tap the puzzle piece to pick a puzzle. Some squares '
+                'already show a number: the knight must land there on '
+                'exactly that move, and on no other move.',
+              ),
+              const _Point(
+                'Start on square 1 and fill the board, one jump at a time. '
+                'Each puzzle has only one solution.',
+              ),
+              const _Point(
+                'In puzzles you can undo as often as you like. Solved '
+                'puzzles get a tick.',
+              ),
+
               const _Heading('Open and closed tours'),
               const _Point(
-                'A path that visits all 64 squares is called a '
+                'A path that visits every square of the board is called a '
                 "knight's tour.",
               ),
               const _Point('In an open tour, the last square can be anywhere.'),
@@ -89,34 +109,41 @@ class InfoScreen extends StatelessWidget {
               ),
               const _Point(
                 'In the 1770s, a chess-playing machine called "the '
-                'Turk" amazed people by doing the knight\'s tour from any '
-                'square. The secret: a person was hidden inside!',
+                'Turk" amazed people by doing the knight\'s tour on a '
+                'chessboard, from any square. The secret: a person was '
+                'hidden inside!',
               ),
 
               const _Heading('Amazing facts'),
               const _Point(
-                'There are 26,534,728,821,064 closed tours (about '
-                '26.5 trillion), counting each direction. Computers '
-                'finished counting them in 1997.',
+                'On the 8×8 chessboard there are 26,534,728,821,064 '
+                'closed tours (about 26.5 trillion), counting each '
+                'direction. Computers finished counting them in 1997.',
               ),
               const _Point(
-                'With the open tours too, there are '
+                'With the open tours too, the 8×8 board has '
                 '19,591,828,170,979,904 tours (about 19.6 quadrillion). '
                 'That count was finished in 2014.',
               ),
               const _Point(
-                'You can finish a tour from every square: follow '
-                'a closed tour, starting wherever you like.',
+                'On the 8×8 board you can finish a tour from every '
+                'square: follow a closed tour, starting wherever you like. '
+                'The same goes for every board in this game except 5×5.',
               ),
               const _Point(
                 'The knight always lands on the other color: '
                 'light, dark, light, dark… So a board with an odd number '
                 'of squares, like 5×5, can never have a closed tour.',
               ),
+              const _Point(
+                'The 5×5 board has 13 squares of the corners\' color and '
+                '12 of the other. A tour must start and end on the color '
+                'with 13, so starting anywhere else can never work.',
+              ),
               const _Point('On a 4×4 board there is no tour at all.'),
               const _Point(
                 'In a magic square, every row, column and diagonal '
-                "adds up to the same number. No knight's tour on a "
+                "adds up to the same number. No knight's tour on the 8×8 "
                 'chessboard is fully magic, as a computer search showed in '
                 '2003. But 140 tours are "semi-magic": the numbers in every '
                 'row and every column add up to 260.',

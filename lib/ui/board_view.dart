@@ -73,7 +73,7 @@ class BoardView extends StatelessWidget {
                   rejected: i == rejectedIndex,
                   hinted: targets.contains(i),
                   exits: countExits && targets.contains(i)
-                      ? game.legalMovesFrom(i).length
+                      ? game.legalMovesFrom(i, game.moveCount + 2).length
                       : null,
                   dead: dead.contains(i),
                   onTap: () => onTap(i),
@@ -245,7 +245,8 @@ class _HolePainter extends CustomPainter {
       old.background != background || old.stripe != stripe;
 }
 
-/// Move number on a square, drawn above the path so it stays readable.
+/// Move number on a square, drawn above the path so it stays readable. In a
+/// puzzle, the given numbers show before the knight gets there.
 class _Number extends StatelessWidget {
   const _Number({required this.index, required this.game});
 
@@ -255,9 +256,31 @@ class _Number extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final number = game.numberAt(index);
-    if (number == 0) return const SizedBox.shrink();
-    final isCurrent = index == game.current;
     final colors = Theme.of(context).extension<BoardColors>()!;
+    if (number == 0) {
+      final clue = game.clueAt(index);
+      if (clue == null) return const SizedBox.shrink();
+      return Center(
+        child: FittedBox(
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Text(
+              '$clue',
+              style: TextStyle(
+                color: colors.clueText,
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                shadows: [
+                  for (var i = 0; i < 3; i++)
+                    Shadow(color: colors.clueHalo, blurRadius: 3),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    final isCurrent = index == game.current;
     return Center(
       child: FittedBox(
         child: Padding(

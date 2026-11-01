@@ -3,11 +3,20 @@
 /// Squares are addressed by a flat index: `index = row * size + col`.
 /// [holes] are squares that aren't part of the board: the knight can't land
 /// on them and doesn't need to visit them.
+/// In a puzzle, [clues] gives squares their move number up front: the knight
+/// must land there on exactly that move.
 /// This class has no Flutter dependencies so it can be unit tested directly.
 class KnightTour {
-  KnightTour({this.size = 8, this.holes = const {}, this.maxUndos = 3})
-    : _board = List.filled(size * size, 0),
-      _undosLeft = maxUndos;
+  KnightTour({
+    this.size = 8,
+    this.holes = const {},
+    this.clues = const {},
+    this.maxUndos = 3,
+  }) : _board = List.filled(size * size, 0),
+       _clueSquares = {
+         for (final MapEntry(key: square, value: number) in clues.entries)
+           number: square,
+       };
 
   static const _jumps = [
     (-2, -1),
@@ -23,8 +32,15 @@ class KnightTour {
   final int size;
   final Set<int> holes;
 
-  /// Total undos allowed per game.
-  final int maxUndos;
+  /// Square -> move number, for the squares given in a puzzle.
+  final Map<int, int> clues;
+
+  /// The same, the other way round: move number -> square.
+  final Map<int, int> _clueSquares;
+
+  /// Total undos allowed per game, or null for as many as you like (and
+  /// then they can be chained).
+  final int? maxUndos;
 
   /// 0 = not visited, otherwise the move number (1-based).
   final List<int> _board;
@@ -32,7 +48,7 @@ class KnightTour {
   /// Visited squares in order.
   final List<int> _path = [];
 
-  int _undosLeft;
+  int _undosUsed = 0;
 
   /// True right after an undo: undos can't be chained, so you can only take
   /// back a misclick, not walk backwards through the tour.
@@ -44,8 +60,10 @@ class KnightTour {
   /// Squares to visit: every square except the holes.
   int get total => squareCount - holes.length;
   int get moveCount => _path.length;
-  int get undosLeft => _undosLeft;
-  int get undosUsed => maxUndos - _undosLeft;
+
+  /// Null when undos are unlimited.
+  int? get undosLeft => maxUndos == null ? null : maxUndos! - _undosUsed;
+  int get undosUsed => _undosUsed;
   int? get current => _path.isEmpty ? null : _path.last;
   int? get start => _path.isEmpty ? null : _path.first;
 
@@ -56,6 +74,23 @@ class KnightTour {
   int numberAt(int index) => _board[index];
 
   bool isHole(int index) => holes.contains(index);
+
+  /// Move number given on [index] in a puzzle, or null.
+  int? clueAt(int index) => clues[index];
+
+  /// The clues still ahead, as the solver takes them: number of jumps from
+  /// the knight's square -> square to land on after that many jumps.
+  Map<int, int> get cluesAhead => {
+    for (final MapEntry(key: number, value: square) in _clueSquares.entries)
+      if (number > moveCount) number - moveCount: square,
+  };
+
+  /// Whether move [number] may land on [index]: it must land on the square
+  /// given that number, and other moves must keep off the given squares.
+  bool _fitsClues(int index, int number) {
+    final clue = clues[index];
+    return clue == number || (clue == null && _clueSquares[number] == null);
+  }
 
   bool get isComplete => moveCount == total;
 
@@ -70,13 +105,19 @@ class KnightTour {
 
   /// Still allowed when stuck, so a misclick into a dead end can be fixed.
   bool get canUndo =>
-      _path.isNotEmpty && !isComplete && _undosLeft > 0 && !_justUndid;
+      _path.isNotEmpty &&
+      !isComplete &&
+      (maxUndos == null || (undosLeft! > 0 && !_justUndid));
 
-  /// Unvisited squares reachable from [index] with one knight move.
-  List<int> legalMovesFrom(int index) => [
-    for (final n in _neighbours(index))
-      if (_board[n] == 0) n,
-  ];
+  /// Unvisited squares reachable from [index] with one knight move, as move
+  /// [number] (by default the next move; it matters for clues).
+  List<int> legalMovesFrom(int index, [int? number]) {
+    number ??= moveCount + 1;
+    return [
+      for (final n in _neighbours(index))
+        if (_board[n] == 0 && _fitsClues(n, number)) n,
+    ];
+  }
 
   /// Unvisited squares the knight can never reach again: every square a
   /// knight move away is already visited, and none of them is the knight's
@@ -97,6 +138,7 @@ class KnightTour {
   bool tryMove(int index) {
     if (isOver || isHole(index) || _board[index] != 0) return false;
     if (current != null && !_isKnightMove(current!, index)) return false;
+    if (!_fitsClues(index, moveCount + 1)) return false;
     _path.add(index);
     _board[index] = _path.length;
     _justUndid = false;
@@ -107,7 +149,7 @@ class KnightTour {
   bool undo() {
     if (!canUndo) return false;
     _board[_path.removeLast()] = 0;
-    _undosLeft--;
+    _undosUsed++;
     _justUndid = true;
     return true;
   }
@@ -115,7 +157,7 @@ class KnightTour {
   void restart() {
     _board.fillRange(0, _board.length, 0);
     _path.clear();
-    _undosLeft = maxUndos;
+    _undosUsed = 0;
     _justUndid = false;
   }
 

@@ -6,9 +6,10 @@ import 'theme.dart';
 
 /// Bottom sheet listing the boards. Pops with the chosen one.
 class BoardPicker extends StatelessWidget {
-  const BoardPicker({super.key, required this.current});
+  const BoardPicker({super.key, this.current});
 
-  final Board current;
+  /// Null while playing a puzzle.
+  final Board? current;
 
   static String _subtitle(Board board) => [
     '${board.total} squares.',
@@ -59,8 +60,8 @@ class BoardPicker extends StatelessWidget {
     leading: BoardPreview(board: board, width: 44),
     title: Text(board.name),
     subtitle: Text(_subtitle(board)),
-    selected: board.id == current.id,
-    trailing: board.id == current.id ? const Icon(Icons.check) : null,
+    selected: board.id == current?.id,
+    trailing: board.id == current?.id ? const Icon(Icons.check) : null,
     onTap: () => Navigator.pop(context, board),
   );
 }

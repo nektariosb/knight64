@@ -36,7 +36,9 @@ Open issues and ideas for Knight's Tour.
 - [x] Shaped boards (holes): Cross, Donut, Frame, Heart, Diamond, Smiley, House, Tree. Each has a tour from every square and a closed tour (checked in the tests). Random holes were dropped: they'd look like a mistake and often can't be filled.
 - [ ] More shapes? Ideas: star, boat, letters. Check new ones with the solver (every square needs at least 2 knight moves).
 - [ ] More boards? 7×7 (no closed tours), non-square boards like 3×4.
-- [ ] Puzzle mode: some squares come pre-numbered; find a tour that matches them. Needs the solver.
+- [x] Puzzle mode: 30 numbered puzzles (3×3 up to 10×10 and shapes) where some squares come pre-numbered; play move by move, and the knight must land on each given square at its number. Each has exactly one solution (checked in the tests). Unlimited undo, no scores, solved ones get a tick. Made by `dart run tool/make_puzzles.dart`.
+  - [x] Order playtested: puzzles 10–11 (6×6, fewest numbers) are really hard, but kept where they are on purpose, so not everything is solved in half an hour.
+  - [ ] More puzzles? The tool can make as many as we like.
 - [ ] Daily challenge: same start square (and holes) for everyone, picked from the date.
 - [ ] Timer?
 
