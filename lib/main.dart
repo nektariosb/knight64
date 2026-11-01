@@ -6,11 +6,11 @@ import 'ui/theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final themeController = await ThemeController.load();
-  runApp(Knight64App(themeController: themeController));
+  runApp(KnightsTourApp(themeController: themeController));
 }
 
-class Knight64App extends StatelessWidget {
-  const Knight64App({super.key, required this.themeController});
+class KnightsTourApp extends StatelessWidget {
+  const KnightsTourApp({super.key, required this.themeController});
 
   final ThemeController themeController;
 
@@ -19,7 +19,7 @@ class Knight64App extends StatelessWidget {
     return ValueListenableBuilder(
       valueListenable: themeController,
       builder: (context, mode, _) => MaterialApp(
-        title: 'Knight64',
+        title: "Knight's Tour",
         debugShowCheckedModeBanner: false,
         theme: buildTheme(Brightness.light),
         darkTheme: buildTheme(Brightness.dark),

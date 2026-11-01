@@ -1,6 +1,6 @@
 # TODO
 
-Open issues and ideas for Knight64.
+Open issues and ideas for Knight's Tour.
 
 ## Builds
 
@@ -10,7 +10,7 @@ Open issues and ideas for Knight64.
   - [ ] Change the package name from `com.example.knight64` before any store release.
   - [ ] Set up a signing key (kept out of the repo).
 - [ ] **Web**: release build (`flutter build web`) and choose where to host it (e.g. GitHub Pages).
-- [ ] App icon and name for each platform.
+- [ ] App icon for each platform (still Flutter's default). The name "Knight's Tour" is set everywhere.
 - [ ] GitHub Actions: run tests and build on every push, and attach builds to releases.
 
 ## Gameplay
@@ -41,7 +41,7 @@ Open issues and ideas for Knight64.
 
 ## Info
 
-- [ ] "About the Knight's Tour" screen: how to play, open vs. closed tours, a short history, facts and numbers. Check every fact against a source before adding it.
+- [x] "About the Knight's Tour" screen: how to play, open vs. closed tours, a short history, facts and numbers. Check every fact against a source before adding it.
 - [ ] Show a random fact somewhere (game over screen?).
 
 ## Graphics

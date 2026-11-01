@@ -10,6 +10,7 @@ import '../game/options.dart';
 import '../game/solver.dart';
 import 'board_view.dart';
 import 'high_scores_screen.dart';
+import 'info_screen.dart';
 import 'options_sheet.dart';
 import 'save_score_dialog.dart';
 import 'sounds.dart';
@@ -268,53 +269,75 @@ class _GameScreenState extends State<GameScreen> {
     Fillable.unknown => _note(theme, Icons.help_outline, 'Hard to tell'),
   };
 
+  /// "Playing with help", plus the fill check's answer when that's on.
+  Widget? _helpNote(ThemeData theme) {
+    if (!_helped) return null;
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        spacing: 4,
+        children: [
+          ..._note(theme, Icons.lightbulb_outline, 'Playing with help'),
+          if (_showFillable) ...[
+            const SizedBox(width: 4),
+            ..._fillableNote(theme),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// The icon buttons under the board, spread evenly.
+  Widget _toolbar() => Row(
+    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    children: [
+      IconButton(
+        tooltip: widget.themeController.isDark ? 'Light mode' : 'Dark mode',
+        icon: Icon(
+          widget.themeController.isDark
+              ? Icons.light_mode_outlined
+              : Icons.dark_mode_outlined,
+        ),
+        onPressed: widget.themeController.toggle,
+      ),
+      IconButton(
+        tooltip: _sounds.enabled ? 'Sound off' : 'Sound on',
+        icon: Icon(
+          _sounds.enabled
+              ? Icons.volume_up_outlined
+              : Icons.volume_off_outlined,
+        ),
+        onPressed: () async {
+          await _sounds.toggle();
+          if (mounted) setState(() {});
+        },
+      ),
+      IconButton(
+        tooltip: "About the Knight's Tour",
+        icon: const Icon(Icons.info_outline),
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute<void>(builder: (_) => const InfoScreen()),
+        ),
+      ),
+      IconButton(
+        tooltip: 'Options',
+        icon: const Icon(Icons.tune),
+        onPressed: _openOptions,
+      ),
+      IconButton(
+        tooltip: 'High scores',
+        icon: const Icon(Icons.emoji_events_outlined),
+        onPressed: _openHighScores,
+      ),
+    ],
+  );
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Knight64'),
-        leadingWidth: 104,
-        leading: Row(
-          children: [
-            IconButton(
-              tooltip: widget.themeController.isDark
-                  ? 'Light mode'
-                  : 'Dark mode',
-              icon: Icon(
-                widget.themeController.isDark
-                    ? Icons.light_mode_outlined
-                    : Icons.dark_mode_outlined,
-              ),
-              onPressed: widget.themeController.toggle,
-            ),
-            IconButton(
-              tooltip: _sounds.enabled ? 'Sound off' : 'Sound on',
-              icon: Icon(
-                _sounds.enabled
-                    ? Icons.volume_up_outlined
-                    : Icons.volume_off_outlined,
-              ),
-              onPressed: () async {
-                await _sounds.toggle();
-                if (mounted) setState(() {});
-              },
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Options',
-            icon: const Icon(Icons.tune),
-            onPressed: _openOptions,
-          ),
-          IconButton(
-            tooltip: 'High scores',
-            icon: const Icon(Icons.emoji_events_outlined),
-            onPressed: _openHighScores,
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text("Knight's Tour")),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -323,49 +346,43 @@ class _GameScreenState extends State<GameScreen> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  Text(
-                    _status,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: _game.isOver ? theme.colorScheme.primary : null,
-                      fontWeight: _game.isOver ? FontWeight.bold : null,
-                    ),
-                  ),
-                  // Space is kept even when empty, so the board doesn't jump.
-                  SizedBox(
-                    height: 22,
-                    child: _helped
-                        ? FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Row(
-                              spacing: 4,
-                              children: [
-                                ..._note(
-                                  theme,
-                                  Icons.lightbulb_outline,
-                                  'Playing with help',
-                                ),
-                                if (_showFillable) ...[
-                                  const SizedBox(width: 4),
-                                  ..._fillableNote(theme),
-                                ],
-                              ],
-                            ),
-                          )
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
+                  // The board sits in the middle of the free space, with the
+                  // status just above it and the buttons just below.
                   Expanded(
                     child: Center(
-                      child: BoardView(
-                        game: _game,
-                        rejectedIndex: _rejectedIndex,
-                        showPath:
-                            _options.pathWhilePlaying ||
-                            (_options.pathAtEnd && _game.isOver),
-                        highlightMoves: _options.highlightMoves,
-                        countExits: _options.countExits,
-                        markDead: _options.markDead,
-                        onTap: _onSquareTap,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Space is kept even when empty, so the board
+                          // doesn't jump. Above the status, so the status
+                          // stays close to the board.
+                          SizedBox(height: 22, child: _helpNote(theme)),
+                          Text(
+                            _status,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: _game.isOver
+                                  ? theme.colorScheme.primary
+                                  : null,
+                              fontWeight: _game.isOver ? FontWeight.bold : null,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Flexible(
+                            child: BoardView(
+                              game: _game,
+                              rejectedIndex: _rejectedIndex,
+                              showPath:
+                                  _options.pathWhilePlaying ||
+                                  (_options.pathAtEnd && _game.isOver),
+                              highlightMoves: _options.highlightMoves,
+                              countExits: _options.countExits,
+                              markDead: _options.markDead,
+                              onTap: _onSquareTap,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _toolbar(),
+                        ],
                       ),
                     ),
                   ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:knight64/main.dart';
 import 'package:knight64/ui/board_view.dart';
+import 'package:knight64/ui/info_screen.dart';
 import 'package:knight64/ui/options_sheet.dart';
 import 'package:knight64/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,7 +13,7 @@ Future<void> startApp(WidgetTester tester) async {
     ..physicalSize = const Size(1080, 2400)
     ..devicePixelRatio = 2.625;
   addTearDown(tester.view.reset);
-  await tester.pumpWidget(Knight64App(themeController: ThemeController()));
+  await tester.pumpWidget(KnightsTourApp(themeController: ThemeController()));
   await tester.pumpAndSettle();
 }
 
@@ -55,7 +56,7 @@ void main() {
   testWidgets('starts with an empty board and the start prompt', (
     tester,
   ) async {
-    await tester.pumpWidget(Knight64App(themeController: ThemeController()));
+    await tester.pumpWidget(KnightsTourApp(themeController: ThemeController()));
     expect(find.text('Tap any square to start'), findsOneWidget);
     expect(find.text('Undo (3)'), findsOneWidget);
     expect(find.text('1'), findsNothing);
@@ -63,7 +64,7 @@ void main() {
 
   testWidgets('theme button switches between dark and light', (tester) async {
     final controller = ThemeController();
-    await tester.pumpWidget(Knight64App(themeController: controller));
+    await tester.pumpWidget(KnightsTourApp(themeController: controller));
     expect(controller.value, ThemeMode.dark);
 
     await tester.tap(find.byTooltip('Light mode'));
@@ -208,6 +209,26 @@ void main() {
     await tapSquare(tester, 0, 0);
     expect(find.byKey(const ValueKey('path')), findsOneWidget);
     expect(find.text('Playing with help'), findsNothing);
+  });
+
+  testWidgets('info button opens the knight\'s tour page', (tester) async {
+    await startApp(tester);
+
+    await tester.tap(find.byTooltip("About the Knight's Tour"));
+    await tester.pumpAndSettle();
+    expect(find.text('How to play'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('Amazing facts'),
+      300,
+      scrollable: find
+          .descendant(
+            of: find.byType(InfoScreen),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    expect(find.text('Amazing facts'), findsOneWidget);
   });
 
   testWidgets('sound button turns sound off and remembers it', (tester) async {

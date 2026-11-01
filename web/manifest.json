@@ -1,11 +1,11 @@
 {
-    "name": "knight64",
-    "short_name": "knight64",
+    "name": "Knight's Tour",
+    "short_name": "Knight's Tour",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Move a chess knight so it visits every square exactly once.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
