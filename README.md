@@ -78,6 +78,8 @@ lib/
   ui/sounds.dart         Sound effects
 assets/
   sounds/                Sound files
+tool/
+  make_reject_sound.py   Generates the reject sound
 test/                    Unit and widget tests
 ```
 
