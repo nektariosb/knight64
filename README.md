@@ -8,7 +8,7 @@ A Flutter puzzle game based on the classic **Knight's Tour** problem: move a che
 
 1. The board starts empty.
 2. Tap any square to place the knight there. That square is marked **1**.
-3. Tap a square that is a legal knight move (an "L" shape: two squares one way, one square the other) from your last square. It is marked with the next number.
+3. Tap a square that is a legal knight move (an "L" shape: two squares one way, one square the other) from your last square. It is marked with the next number, with a wood-chop sound.
 4. If you tap a square that is not a knight move from your last square, or a square you have already visited, you hear a reject sound and nothing changes.
 5. The goal is to fill all 64 squares, numbered 1 to 64.
 6. If the knight has no legal moves left before the board is full, the game is over.
@@ -26,6 +26,7 @@ Scores are ranked by squares filled. Ties are broken by: closed tour beats open 
 | Undo    | Clears the last square. Meant for fixing misclicks: you get 3 undos per game, and you can't undo twice in a row. |
 | Restart | Clears the board so you can start a new tour. |
 | ☀ / ☾   | Switches between dark and light mode (top left). Your choice is remembered. |
+| 🔊 / 🔇 | Turns sound on or off (top left). Your choice is remembered. |
 | 🏆      | Opens the high scores (top right). |
 
 ## Platforms
@@ -79,7 +80,7 @@ lib/
 assets/
   sounds/                Sound files
 tool/
-  make_reject_sound.py   Generates the reject sound
+  make_sounds.py         Generates the sound effects
 test/                    Unit and widget tests
 ```
 

@@ -37,6 +37,14 @@ class _GameScreenState extends State<GameScreen> {
   bool get _canUndo => _game.canUndo && !_scoreSaved;
 
   @override
+  void initState() {
+    super.initState();
+    _sounds.load().then((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
   void dispose() {
     _flashTimer?.cancel();
     _sounds.dispose();
@@ -45,6 +53,7 @@ class _GameScreenState extends State<GameScreen> {
 
   void _onSquareTap(int index) {
     if (_game.tryMove(index)) {
+      _sounds.move();
       setState(() {});
       if (_game.isOver && !_gameOverShown) {
         _gameOverShown = true;
@@ -140,14 +149,33 @@ class _GameScreenState extends State<GameScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Knight64'),
-        leading: IconButton(
-          tooltip: widget.themeController.isDark ? 'Light mode' : 'Dark mode',
-          icon: Icon(
-            widget.themeController.isDark
-                ? Icons.light_mode_outlined
-                : Icons.dark_mode_outlined,
-          ),
-          onPressed: widget.themeController.toggle,
+        leadingWidth: 104,
+        leading: Row(
+          children: [
+            IconButton(
+              tooltip: widget.themeController.isDark
+                  ? 'Light mode'
+                  : 'Dark mode',
+              icon: Icon(
+                widget.themeController.isDark
+                    ? Icons.light_mode_outlined
+                    : Icons.dark_mode_outlined,
+              ),
+              onPressed: widget.themeController.toggle,
+            ),
+            IconButton(
+              tooltip: _sounds.enabled ? 'Sound off' : 'Sound on',
+              icon: Icon(
+                _sounds.enabled
+                    ? Icons.volume_up_outlined
+                    : Icons.volume_off_outlined,
+              ),
+              onPressed: () async {
+                await _sounds.toggle();
+                if (mounted) setState(() {});
+              },
+            ),
+          ],
         ),
         actions: [
           IconButton(

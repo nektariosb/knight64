@@ -26,4 +26,15 @@ void main() {
     expect(controller.value, ThemeMode.light);
     expect(find.byTooltip('Dark mode'), findsOneWidget);
   });
+
+  testWidgets('sound button turns sound off and remembers it', (tester) async {
+    await tester.pumpWidget(Knight64App(themeController: ThemeController()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Sound off'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Sound on'), findsOneWidget);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('sound_on'), false);
+  });
 }
