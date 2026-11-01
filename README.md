@@ -42,7 +42,7 @@ Windows, Linux, Android and web.
 ### Run
 
 ```bash
-git clone https://github.com/<your-username>/knight64.git
+git clone https://github.com/nektariosb/knight64.git
 cd knight64
 flutter pub get
 flutter run
