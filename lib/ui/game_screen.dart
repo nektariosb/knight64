@@ -11,6 +11,7 @@ import '../game/options.dart';
 import '../game/solver.dart';
 import 'board_picker.dart';
 import 'board_view.dart';
+import 'celebration.dart';
 import 'high_scores_screen.dart';
 import 'info_screen.dart';
 import 'options_sheet.dart';
@@ -36,8 +37,12 @@ class _GameScreenState extends State<GameScreen> {
   int? _rejectedIndex;
   Timer? _flashTimer;
 
-  /// Opens the save dialog once the path has finished drawing.
+  /// Waits for the path to finish drawing, then for the celebration, before
+  /// opening the save dialog.
   Timer? _saveTimer;
+
+  /// Confetti and a banner are showing because the board is full.
+  bool _celebrating = false;
 
   /// Once saved, the game is locked so the same game can't be saved twice.
   bool _scoreSaved = false;
@@ -137,7 +142,7 @@ class _GameScreenState extends State<GameScreen> {
               ? BoardView.pathDrawTime(_game.moveCount) +
                     const Duration(milliseconds: 500)
               : Duration.zero,
-          _offerSave,
+          _game.isComplete ? _celebrate : _offerSave,
         );
       }
       return;
@@ -151,8 +156,16 @@ class _GameScreenState extends State<GameScreen> {
     });
   }
 
+  /// Full board: fanfare and confetti, then the save dialog.
+  void _celebrate() {
+    _sounds.fanfare(closed: _game.isClosed);
+    setState(() => _celebrating = true);
+    _saveTimer = Timer(Celebration.bannerTime, _offerSave);
+  }
+
   void _undo() => setState(() {
     _saveTimer?.cancel();
+    _celebrating = false;
     _game.undo();
     _gameOverShown = false;
     _checkFillable();
@@ -210,6 +223,7 @@ class _GameScreenState extends State<GameScreen> {
   /// Resets everything about the game except the board itself.
   void _newGame() {
     _saveTimer?.cancel();
+    _celebrating = false;
     _scoreSaved = false;
     _gameOverShown = false;
     _helped = false;
@@ -421,6 +435,22 @@ class _GameScreenState extends State<GameScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    return Stack(
+      children: [
+        _screen(theme),
+        if (_celebrating)
+          Positioned.fill(
+            child: Celebration(
+              closed: _game.isClosed,
+              total: _game.total,
+              onDone: () => setState(() => _celebrating = false),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _screen(ThemeData theme) {
     return Scaffold(
       appBar: AppBar(title: const Text("Knight's Tour")),
       body: SafeArea(

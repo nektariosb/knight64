@@ -16,8 +16,7 @@ Open issues and ideas for Knight's Tour.
 ## Gameplay
 
 - [x] Closed-tour bonus: if square 64 is a knight's move from square 1, celebrate and mark the score as "closed".
-- [ ] Closed-tour sound?
-- [ ] Decide what else happens when you fill all 64 squares (celebration, ...).
+- [x] Full board: fanfare, confetti and a "Tour complete!" banner. Closed tour: a bigger fanfare, confetti fired from both bottom corners, and a gold "Closed tour!" banner that explains the loop. No vibration.
 - [ ] Decide whether the undo rules (3 per game, no chained undos) are right after playtesting.
 - [ ] Test the "Check if the board can be filled" option on a real phone: is it fast enough? (Up to about 3 s per move on a PC for the hardest positions, 200,000 search steps; 30,000 on the web.)
 - [ ] Solver: could it answer more of the ~2% "Hard to tell" positions? They're early positions (moves 5–25), mostly ones that turn out lost a few moves later.
@@ -34,7 +33,8 @@ Open issues and ideas for Knight's Tour.
 ## Modes
 
 - [x] Board sizes: 3×3 ring (centre is a hole), 5×5, 6×6, 8×8, 10×10, each with its own high score list. On 5×5 a tour only exists from the 13 squares of the corners' colour, and there are no closed tours.
-- [ ] Blocked squares on bigger boards: some squares are holes; visit all the others. Holes already work (boards have a set of holes, and the solver treats them as visited); what's missing is layouts (shapes? random?) and a way to pick them.
+- [x] Shaped boards (holes): Cross, Donut, Frame, Heart, Diamond, Smiley, House, Tree. Each has a tour from every square and a closed tour (checked in the tests). Random holes were dropped: they'd look like a mistake and often can't be filled.
+- [ ] More shapes? Ideas: star, boat, letters. Check new ones with the solver (every square needs at least 2 knight moves).
 - [ ] More boards? 7×7 (no closed tours), non-square boards like 3×4.
 - [ ] Puzzle mode: some squares come pre-numbered; find a tour that matches them. Needs the solver.
 - [ ] Daily challenge: same start square (and holes) for everyone, picked from the date.
@@ -47,10 +47,10 @@ Open issues and ideas for Knight's Tour.
 
 ## Graphics
 
-- [ ] Visited squares: keep the faint checker pattern showing through, or use one solid color?
+- [x] Visited squares: keep the faint checker pattern showing through.
 - [ ] Knight icon on the current square?
 - [ ] Animations (move, game over).
 
 ## Project
 
-- [ ] Choose a license (currently TBD in the README).
+- [x] License: MIT.

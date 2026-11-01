@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class Sounds {
   final _move = _player();
   final _reject = _player();
+  final _fanfare = _player();
 
   static const _key = 'sound_on';
 
@@ -30,6 +31,10 @@ class Sounds {
 
   Future<void> reject() => _play(_reject, 'sounds/reject.wav');
 
+  /// Played when the board is full; a bigger one for a closed tour.
+  Future<void> fanfare({required bool closed}) =>
+      _play(_fanfare, closed ? 'sounds/closed.wav' : 'sounds/complete.wav');
+
   Future<void> _play(AudioPlayer player, String asset) async {
     if (!enabled) return;
     // Restart from the beginning if the sound is still playing.
@@ -40,5 +45,6 @@ class Sounds {
   void dispose() {
     _move.dispose();
     _reject.dispose();
+    _fanfare.dispose();
   }
 }

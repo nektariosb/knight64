@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:knight64/main.dart';
 import 'package:knight64/ui/board_view.dart';
+import 'package:knight64/ui/celebration.dart';
 import 'package:knight64/ui/info_screen.dart';
 import 'package:knight64/ui/options_sheet.dart';
 import 'package:knight64/ui/theme.dart';
@@ -312,8 +313,14 @@ void main() {
       await tapSquare(tester, i ~/ 3, i % 3, size: 3);
     }
     expect(find.text('Closed tour! All 8 squares'), findsOneWidget);
+    // The path draws, then the celebration, then the save dialog.
     await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(Celebration), findsOneWidget);
+    expect(find.textContaining('A full loop!'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+    await tester.pump(Celebration.bannerTime);
     await tester.pumpAndSettle();
+    expect(find.byType(Celebration), findsNothing);
     await tester.enterText(find.byType(TextField), 'Ana');
     // Lets the Save button see the name.
     await tester.pump();
@@ -330,6 +337,52 @@ void main() {
     await tester.tap(find.text('8×8'));
     await tester.pumpAndSettle();
     expect(find.text('No scores yet. Go play!'), findsOneWidget);
+  });
+
+  testWidgets('a full open tour celebrates; restart stops it', (tester) async {
+    SharedPreferences.setMockInitialValues({'board': '5x5'});
+    await startApp(tester);
+
+    for (final i in [
+      0,
+      7,
+      4,
+      13,
+      24,
+      17,
+      20,
+      11,
+      18,
+      9,
+      2,
+      5,
+      16,
+      23,
+      14,
+      3,
+      6,
+      15,
+      22,
+      19,
+      8,
+      1,
+      12,
+      21,
+      10,
+    ]) {
+      await tapSquare(tester, i ~/ 5, i % 5, size: 5);
+    }
+    expect(find.text('Tour complete! All 25 squares'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text('You filled all 25 squares!'), findsOneWidget);
+    expect(find.textContaining('A full loop!'), findsNothing);
+
+    // The confetti doesn't block the buttons.
+    await tester.tap(find.text('Restart'));
+    await tester.pump();
+    expect(find.byType(Celebration), findsNothing);
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
   });
 
   testWidgets('sound button turns sound off and remembers it', (tester) async {

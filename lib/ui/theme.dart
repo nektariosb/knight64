@@ -11,6 +11,20 @@ const _night = Color(0xFF1B231E);
 const _mist = Color(0xFFEEF3EA);
 const _gold = Color(0xFFE8C14A);
 
+/// Confetti for a full board, the same in light and dark mode.
+const confettiColors = [
+  _gold,
+  _mint,
+  Color(0xFFF07C6C),
+  Color(0xFF6CB4F0),
+  Color(0xFFC79BF2),
+  Colors.white,
+];
+
+/// The closed-tour banner: gold, with dark text.
+const celebrationGold = _gold;
+const onCelebrationGold = _pine;
+
 /// Board colors, which depend on light/dark mode.
 class BoardColors extends ThemeExtension<BoardColors> {
   const BoardColors({

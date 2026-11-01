@@ -102,23 +102,20 @@ class _HighScoresScreenState extends State<HighScoresScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: SegmentedButton<Board>(
-                    segments: [
-                      for (final board in Board.all)
-                        ButtonSegment(
-                          value: board,
-                          label: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(board.name, maxLines: 1),
-                          ),
-                        ),
-                    ],
-                    selected: {_board},
-                    showSelectedIcon: false,
-                    onSelectionChanged: (s) => _showBoard(s.single),
-                  ),
+                // Wraps onto more rows, so every board stays in sight.
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    for (final board in Board.all)
+                      ChoiceChip(
+                        label: Text(board.name),
+                        selected: board == _board,
+                        showCheckmark: false,
+                        onSelected: (_) => _showBoard(board),
+                      ),
+                  ],
                 ),
               ),
               Expanded(child: _list(entries, theme)),

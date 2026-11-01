@@ -35,19 +35,34 @@ class BoardPicker extends StatelessWidget {
               style: theme.textTheme.bodyMedium,
             ),
           ),
-          for (final board in Board.all)
-            ListTile(
-              leading: BoardPreview(board: board, width: 44),
-              title: Text(board.name),
-              subtitle: Text(_subtitle(board)),
-              selected: board.id == current.id,
-              trailing: board.id == current.id ? const Icon(Icons.check) : null,
-              onTap: () => Navigator.pop(context, board),
+          for (final (title, boards) in [
+            ('Sizes', Board.sizes),
+            ('Shapes', Board.shapes),
+          ]) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text(
+                title,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
+              ),
             ),
+            for (final board in boards) _tile(context, board),
+          ],
         ],
       ),
     );
   }
+
+  Widget _tile(BuildContext context, Board board) => ListTile(
+    leading: BoardPreview(board: board, width: 44),
+    title: Text(board.name),
+    subtitle: Text(_subtitle(board)),
+    selected: board.id == current.id,
+    trailing: board.id == current.id ? const Icon(Icons.check) : null,
+    onTap: () => Navigator.pop(context, board),
+  );
 }
 
 /// Small drawing of a board, with its holes.
