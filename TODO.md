@@ -10,7 +10,8 @@ Open issues and ideas for Knight's Tour.
   - [ ] Change the package name from `com.example.knight64` before any store release.
   - [ ] Set up a signing key (kept out of the repo).
 - [ ] **Web**: release build (`flutter build web`) and choose where to host it (e.g. GitHub Pages).
-- [ ] App icon for each platform (still Flutter's default). The name "Knight's Tour" is set everywhere.
+- [x] App icon for each platform: a knight drawn as one olive line on mist (made with Claude Design; master drawing in `tool/knight-icon.svg`). Android has an adaptive vector icon with a monochrome layer for themed icons. The name "Knight's Tour" is set everywhere.
+  - [ ] Linux: the window has no icon yet (the Flutter Linux runner doesn't set one).
 - [ ] GitHub Actions: run tests and build on every push, and attach builds to releases.
 
 ## Gameplay
