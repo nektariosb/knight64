@@ -110,6 +110,22 @@ void main() {
     expect(game.deadSquares, isEmpty);
   });
 
+  test('holes are not part of the board', () {
+    final holed = KnightTour(holes: {sq(2, 1)});
+    expect(holed.total, 63);
+    expect(holed.tryMove(sq(2, 1)), isFalse);
+    holed.tryMove(sq(0, 0));
+    expect(holed.legalMovesFrom(sq(0, 0)), [sq(1, 2)]);
+  });
+
+  test('a hole is never a dead square', () {
+    // On 3x3 the knight can never reach the centre.
+    final plain = KnightTour(size: 3)..tryMove(0);
+    expect(plain.deadSquares, {4});
+    final ring = KnightTour(size: 3, holes: {4})..tryMove(0);
+    expect(ring.deadSquares, isEmpty);
+  });
+
   test('stuck when no unvisited knight moves remain', () {
     // 3x3 board: the centre square has no knight moves at all.
     final small = KnightTour(size: 3);

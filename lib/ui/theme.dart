@@ -27,6 +27,8 @@ class BoardColors extends ThemeExtension<BoardColors> {
     required this.closingPath,
     required this.hint,
     required this.dead,
+    required this.hole,
+    required this.holeStripe,
   });
 
   final Color lightSquare;
@@ -55,6 +57,10 @@ class BoardColors extends ThemeExtension<BoardColors> {
   /// Tint on squares the knight can never reach again, when that help is on.
   final Color dead;
 
+  /// A square that isn't part of the board: dark, with diagonal stripes.
+  final Color hole;
+  final Color holeStripe;
+
   static const dark = BoardColors(
     lightSquare: _sage,
     darkSquare: _forest,
@@ -69,6 +75,8 @@ class BoardColors extends ThemeExtension<BoardColors> {
     closingPath: _gold,
     hint: Color(0x8C1B231E),
     dead: Color(0x99D9645A),
+    hole: _night,
+    holeStripe: _olive,
   );
 
   static const light = BoardColors(
@@ -85,6 +93,8 @@ class BoardColors extends ThemeExtension<BoardColors> {
     closingPath: _gold,
     hint: Color(0x8037664A),
     dead: Color(0x80C0392B),
+    hole: Color(0xFF4A5536),
+    holeStripe: _olive,
   );
 
   @override
@@ -107,6 +117,8 @@ class BoardColors extends ThemeExtension<BoardColors> {
       closingPath: Color.lerp(closingPath, other.closingPath, t)!,
       hint: Color.lerp(hint, other.hint, t)!,
       dead: Color.lerp(dead, other.dead, t)!,
+      hole: Color.lerp(hole, other.hole, t)!,
+      holeStripe: Color.lerp(holeStripe, other.holeStripe, t)!,
     );
   }
 }

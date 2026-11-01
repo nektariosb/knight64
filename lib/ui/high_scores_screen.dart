@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 
+import '../game/boards.dart';
 import '../game/high_scores.dart';
 
+/// The high scores of each board, starting with [board].
 class HighScoresScreen extends StatefulWidget {
   const HighScoresScreen({
     super.key,
     required this.store,
-    required this.total,
+    required this.board,
     this.highlightRank,
   });
 
   final HighScoreStore store;
+  final Board board;
 
-  /// Squares on the board, shown as "23 / 64".
-  final int total;
-
-  /// 1-based rank of a just-saved score to highlight.
+  /// 1-based rank of a just-saved score on [board] to highlight.
   final int? highlightRank;
 
   @override
@@ -23,22 +23,41 @@ class HighScoresScreen extends StatefulWidget {
 }
 
 class _HighScoresScreenState extends State<HighScoresScreen> {
+  late var _board = widget.board;
+  late var _highlightRank = widget.highlightRank;
   List<HighScore>? _entries;
 
   @override
   void initState() {
     super.initState();
-    widget.store.load().then((table) {
-      if (mounted) setState(() => _entries = table.entries);
+    _load();
+  }
+
+  void _load() {
+    final board = _board;
+    _entries = null;
+    widget.store.load(board.id).then((table) {
+      // Ignores the answer if another board was picked meanwhile.
+      if (mounted && board == _board) {
+        setState(() => _entries = table.entries);
+      }
     });
   }
+
+  void _showBoard(Board board) => setState(() {
+    _board = board;
+    _highlightRank = null;
+    _load();
+  });
 
   Future<void> _confirmClear() async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Clear high scores?'),
-        content: const Text('This removes every score on this device.'),
+        title: Text('Clear the ${_board.name} high scores?'),
+        content: Text(
+          'This removes every ${_board.name} score on this device.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -52,7 +71,7 @@ class _HighScoresScreenState extends State<HighScoresScreen> {
       ),
     );
     if (ok != true) return;
-    await widget.store.clear();
+    await widget.store.clear(_board.id);
     if (mounted) setState(() => _entries = []);
   }
 
@@ -76,49 +95,75 @@ class _HighScoresScreenState extends State<HighScoresScreen> {
             ),
         ],
       ),
-      body: switch (entries) {
-        null => const Center(child: CircularProgressIndicator()),
-        [] => const Center(child: Text('No scores yet. Go play!')),
-        _ => Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
-            child: ListView.builder(
-              itemCount: entries.length,
-              itemBuilder: (context, i) {
-                final e = entries[i];
-                final undos = e.undosUsed == 1
-                    ? '1 undo'
-                    : '${e.undosUsed} undos';
-                return ListTile(
-                  selected: i + 1 == widget.highlightRank,
-                  selectedTileColor: theme.colorScheme.primaryContainer
-                      .withValues(alpha: 0.4),
-                  leading: CircleAvatar(child: Text('${i + 1}')),
-                  title: Text(e.name),
-                  subtitle: Text('${_formatDate(e.date)} · $undos'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (e.closed)
-                        const Padding(
-                          padding: EdgeInsets.only(right: 8),
-                          child: Tooltip(
-                            message: 'Closed tour',
-                            child: Icon(Icons.all_inclusive),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<Board>(
+                    segments: [
+                      for (final board in Board.all)
+                        ButtonSegment(
+                          value: board,
+                          label: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(board.name, maxLines: 1),
                           ),
                         ),
-                      Text(
-                        '${e.squares} / ${widget.total}',
-                        style: theme.textTheme.titleMedium,
-                      ),
                     ],
+                    selected: {_board},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (s) => _showBoard(s.single),
                   ),
-                );
-              },
-            ),
+                ),
+              ),
+              Expanded(child: _list(entries, theme)),
+            ],
           ),
         ),
-      },
+      ),
     );
   }
+
+  Widget _list(List<HighScore>? entries, ThemeData theme) => switch (entries) {
+    null => const Center(child: CircularProgressIndicator()),
+    [] => const Center(child: Text('No scores yet. Go play!')),
+    _ => ListView.builder(
+      itemCount: entries.length,
+      itemBuilder: (context, i) {
+        final e = entries[i];
+        final undos = e.undosUsed == 1 ? '1 undo' : '${e.undosUsed} undos';
+        return ListTile(
+          selected: i + 1 == _highlightRank,
+          selectedTileColor: theme.colorScheme.primaryContainer.withValues(
+            alpha: 0.4,
+          ),
+          leading: CircleAvatar(child: Text('${i + 1}')),
+          title: Text(e.name),
+          subtitle: Text('${_formatDate(e.date)} · $undos'),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (e.closed)
+                const Padding(
+                  padding: EdgeInsets.only(right: 8),
+                  child: Tooltip(
+                    message: 'Closed tour',
+                    child: Icon(Icons.all_inclusive),
+                  ),
+                ),
+              Text(
+                '${e.squares} / ${_board.total}',
+                style: theme.textTheme.titleMedium,
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  };
 }

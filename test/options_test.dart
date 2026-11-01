@@ -11,10 +11,19 @@ void main() {
     expect(options.pathAtEnd, isTrue);
     expect(options.pathWhilePlaying, isFalse);
     expect(options.anyHelp, isFalse);
+    expect(options.board, '8x8');
+  });
+
+  test('a board that no longer exists falls back to 8x8', () async {
+    SharedPreferences.setMockInitialValues({'board': '4x4'});
+    final options = Options();
+    await options.load();
+    expect(options.board, '8x8');
   });
 
   test('saves and loads every option', () async {
     final options = Options()
+      ..board = '6x6'
       ..pathAtEnd = false
       ..pathWhilePlaying = true
       ..highlightMoves = true
@@ -25,6 +34,7 @@ void main() {
 
     final loaded = Options();
     await loaded.load();
+    expect(loaded.board, '6x6');
     expect(loaded.pathAtEnd, isFalse);
     expect(loaded.pathWhilePlaying, isTrue);
     expect(loaded.highlightMoves, isTrue);

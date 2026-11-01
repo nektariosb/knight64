@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'boards.dart';
+
 /// One finished game on the high score list.
 class HighScore {
   const HighScore({
@@ -72,14 +74,18 @@ class HighScoreTable {
   }
 }
 
-/// Saves the high score table and the last entered name on the device.
+/// Saves a high score table per board, and the last entered name, on the
+/// device. Boards are given by their id.
 class HighScoreStore {
-  static const _scoresKey = 'high_scores';
   static const _lastNameKey = 'last_name';
 
-  Future<HighScoreTable> load() async {
+  /// 8x8 keeps the key from before there were other boards.
+  static String _scoresKey(String board) =>
+      board == Board.standard.id ? 'high_scores' : 'high_scores_$board';
+
+  Future<HighScoreTable> load(String board) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_scoresKey);
+    final raw = prefs.getString(_scoresKey(board));
     if (raw == null) return HighScoreTable([]);
     try {
       final list = (jsonDecode(raw) as List)
@@ -91,17 +97,17 @@ class HighScoreStore {
     }
   }
 
-  Future<void> save(HighScoreTable table) async {
+  Future<void> save(String board, HighScoreTable table) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      _scoresKey,
+      _scoresKey(board),
       jsonEncode([for (final e in table.entries) e.toJson()]),
     );
   }
 
-  Future<void> clear() async {
+  Future<void> clear(String board) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_scoresKey);
+    await prefs.remove(_scoresKey(board));
   }
 
   Future<String> lastName() async {

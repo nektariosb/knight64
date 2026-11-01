@@ -33,8 +33,9 @@ Open issues and ideas for Knight's Tour.
 
 ## Modes
 
-- [ ] Board sizes: 5×5, 6×6, 7×7, 10×10. Boards with an odd number of squares (5×5, 7×7) have no closed tours, so no closed-tour bonus there. The game rules and the solver already take a size (the solver up to 10×10); the UI and high scores assume 8×8.
-- [ ] Blocked squares: some squares are holes; visit all the others. The solver can treat holes as already visited.
+- [x] Board sizes: 3×3 ring (centre is a hole), 5×5, 6×6, 8×8, 10×10, each with its own high score list. On 5×5 a tour only exists from the 13 squares of the corners' colour, and there are no closed tours.
+- [ ] Blocked squares on bigger boards: some squares are holes; visit all the others. Holes already work (boards have a set of holes, and the solver treats them as visited); what's missing is layouts (shapes? random?) and a way to pick them.
+- [ ] More boards? 7×7 (no closed tours), non-square boards like 3×4.
 - [ ] Puzzle mode: some squares come pre-numbered; find a tour that matches them. Needs the solver.
 - [ ] Daily challenge: same start square (and holes) for everyone, picked from the date.
 - [ ] Timer?

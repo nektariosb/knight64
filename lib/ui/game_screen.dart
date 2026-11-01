@@ -4,10 +4,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../game/boards.dart';
 import '../game/high_scores.dart';
 import '../game/knight_tour.dart';
 import '../game/options.dart';
 import '../game/solver.dart';
+import 'board_picker.dart';
 import 'board_view.dart';
 import 'high_scores_screen.dart';
 import 'info_screen.dart';
@@ -26,7 +28,8 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
-  final _game = KnightTour();
+  var _board = Board.standard;
+  var _game = KnightTour();
   final _sounds = Sounds();
   final _store = HighScoreStore();
   final _options = Options();
@@ -73,8 +76,10 @@ class _GameScreenState extends State<GameScreen> {
     _recheck = false;
     compute(canFill, (
       size: _game.size,
+      // Holes count as visited: they never need a visit.
       visited: [
-        for (var i = 0; i < _game.squareCount; i++) _game.numberAt(i) > 0,
+        for (var i = 0; i < _game.squareCount; i++)
+          _game.numberAt(i) > 0 || _game.isHole(i),
       ],
       current: _game.current!,
       // The web has no background threads, so keep the check short there.
@@ -99,7 +104,13 @@ class _GameScreenState extends State<GameScreen> {
       if (mounted) setState(() {});
     });
     _options.load().then((_) {
-      if (mounted) setState(_checkFillable);
+      if (!mounted) return;
+      setState(() {
+        if (_options.board != _board.id && _game.moveCount == 0) {
+          _setBoard(Board.byId(_options.board));
+        }
+        _checkFillable();
+      });
     });
   }
 
@@ -147,14 +158,82 @@ class _GameScreenState extends State<GameScreen> {
     _checkFillable();
   });
 
-  void _restart() => setState(() {
+  Future<void> _restart() async {
+    if (!await _confirmNewGame(
+      title: 'Start over?',
+      text: "You're in the middle of a game. Starting over clears the board.",
+      confirm: 'Start over',
+    )) {
+      return;
+    }
+    setState(() {
+      _game.restart();
+      _newGame();
+    });
+  }
+
+  /// Asks before throwing away a game in progress. True if there's none, or
+  /// the player agreed.
+  Future<bool> _confirmNewGame({
+    required String title,
+    required String text,
+    required String confirm,
+  }) async {
+    if (_game.moveCount == 0 || _game.isOver) return true;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(text),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep playing'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(confirm),
+          ),
+        ],
+      ),
+    );
+    return ok == true && mounted;
+  }
+
+  /// Starts a new game on [board]. Call inside setState.
+  void _setBoard(Board board) {
+    _board = board;
+    _game = KnightTour(size: board.size, holes: board.holes);
+    _newGame();
+  }
+
+  /// Resets everything about the game except the board itself.
+  void _newGame() {
     _saveTimer?.cancel();
-    _game.restart();
     _scoreSaved = false;
     _gameOverShown = false;
     _helped = false;
     _checkFillable();
-  });
+  }
+
+  Future<void> _chooseBoard() async {
+    final board = await showModalBottomSheet<Board>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => BoardPicker(current: _board),
+    );
+    if (board == null || board == _board || !mounted) return;
+    if (!await _confirmNewGame(
+      title: 'Switch to ${board.name}?',
+      text: "You're in the middle of a game. A new board starts a new game.",
+      confirm: 'New game',
+    )) {
+      return;
+    }
+    _options.board = board.id;
+    _options.save();
+    setState(() => _setBoard(board));
+  }
 
   void _openOptions() {
     showModalBottomSheet<void>(
@@ -184,14 +263,15 @@ class _GameScreenState extends State<GameScreen> {
 
   Future<void> _offerSave() async {
     _saveTimer?.cancel();
-    final table = await _store.load();
+    final board = _board;
+    final table = await _store.load(board.id);
     final lastName = await _store.lastName();
     if (!mounted) return;
     final name = await showDialog<String>(
       context: context,
       builder: (_) => SaveScoreDialog(
         squares: _game.moveCount,
-        total: _game.squareCount,
+        total: _game.total,
         closed: _game.isClosed,
         helped: _helped,
         qualifies: !_helped && table.qualifies(_score('')),
@@ -199,9 +279,9 @@ class _GameScreenState extends State<GameScreen> {
         initialName: lastName,
       ),
     );
-    if (name == null) return;
+    if (name == null || board != _board) return;
     final rank = table.add(_score(name));
-    await _store.save(table);
+    await _store.save(board.id, table);
     await _store.setLastName(name);
     if (!mounted) return;
     setState(() => _scoreSaved = true);
@@ -214,7 +294,7 @@ class _GameScreenState extends State<GameScreen> {
       MaterialPageRoute<void>(
         builder: (_) => HighScoresScreen(
           store: _store,
-          total: _game.squareCount,
+          board: _board,
           highlightRank: highlightRank,
         ),
       ),
@@ -228,14 +308,14 @@ class _GameScreenState extends State<GameScreen> {
   String get _status {
     if (_game.isComplete) {
       return _game.isClosed
-          ? 'Closed tour! All ${_game.squareCount} squares'
-          : 'Tour complete! All ${_game.squareCount} squares';
+          ? 'Closed tour! All ${_game.total} squares'
+          : 'Tour complete! All ${_game.total} squares';
     }
     if (_game.isStuck) {
-      return 'No moves left: ${_game.moveCount} / ${_game.squareCount}';
+      return 'No moves left: ${_game.moveCount} / ${_game.total}';
     }
     if (_game.moveCount == 0) return 'Tap any square to start';
-    return 'Move ${_game.moveCount} / ${_game.squareCount}';
+    return 'Move ${_game.moveCount} / ${_game.total}';
   }
 
   /// Small icon and text for the line under the status.
@@ -291,6 +371,11 @@ class _GameScreenState extends State<GameScreen> {
   Widget _toolbar() => Row(
     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
     children: [
+      IconButton(
+        tooltip: 'Board: ${_board.name}',
+        icon: const Icon(Icons.grid_on),
+        onPressed: _chooseBoard,
+      ),
       IconButton(
         tooltip: widget.themeController.isDark ? 'Light mode' : 'Dark mode',
         icon: Icon(

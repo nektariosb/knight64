@@ -1,5 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'boards.dart';
+
 /// Player options, saved on the device.
 class Options {
   static const _pathAtEndKey = 'path_at_end';
@@ -8,6 +10,10 @@ class Options {
   static const _countExitsKey = 'count_exits';
   static const _markDeadKey = 'mark_dead';
   static const _checkFillableKey = 'check_fillable';
+  static const _boardKey = 'board';
+
+  /// Id of the board to play on.
+  String board = Board.standard.id;
 
   /// Draw the knight's path when a game ends. Not a help: the game is over.
   bool pathAtEnd = true;
@@ -41,6 +47,7 @@ class Options {
     countExits = prefs.getBool(_countExitsKey) ?? false;
     markDead = prefs.getBool(_markDeadKey) ?? false;
     checkFillable = prefs.getBool(_checkFillableKey) ?? false;
+    board = Board.byId(prefs.getString(_boardKey)).id;
   }
 
   Future<void> save() async {
@@ -51,5 +58,6 @@ class Options {
     await prefs.setBool(_countExitsKey, countExits);
     await prefs.setBool(_markDeadKey, markDead);
     await prefs.setBool(_checkFillableKey, checkFillable);
+    await prefs.setString(_boardKey, board);
   }
 }

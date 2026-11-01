@@ -1,9 +1,11 @@
 /// Rules and state for a single Knight's Tour game.
 ///
 /// Squares are addressed by a flat index: `index = row * size + col`.
+/// [holes] are squares that aren't part of the board: the knight can't land
+/// on them and doesn't need to visit them.
 /// This class has no Flutter dependencies so it can be unit tested directly.
 class KnightTour {
-  KnightTour({this.size = 8, this.maxUndos = 3})
+  KnightTour({this.size = 8, this.holes = const {}, this.maxUndos = 3})
     : _board = List.filled(size * size, 0),
       _undosLeft = maxUndos;
 
@@ -19,6 +21,7 @@ class KnightTour {
   ];
 
   final int size;
+  final Set<int> holes;
 
   /// Total undos allowed per game.
   final int maxUndos;
@@ -35,7 +38,11 @@ class KnightTour {
   /// back a misclick, not walk backwards through the tour.
   bool _justUndid = false;
 
+  /// Squares on the grid, holes included: the range of flat indexes.
   int get squareCount => size * size;
+
+  /// Squares to visit: every square except the holes.
+  int get total => squareCount - holes.length;
   int get moveCount => _path.length;
   int get undosLeft => _undosLeft;
   int get undosUsed => maxUndos - _undosLeft;
@@ -48,7 +55,9 @@ class KnightTour {
   /// Move number on [index], or 0 if not visited yet.
   int numberAt(int index) => _board[index];
 
-  bool get isComplete => moveCount == squareCount;
+  bool isHole(int index) => holes.contains(index);
+
+  bool get isComplete => moveCount == total;
 
   /// The knight has moved but has nowhere left to go before filling the board.
   bool get isStuck =>
@@ -77,6 +86,7 @@ class KnightTour {
     return {
       for (var i = 0; i < squareCount; i++)
         if (_board[i] == 0 &&
+            !isHole(i) &&
             !_neighbours(i).any((n) => _board[n] == 0 || n == current))
           i,
     };
@@ -85,7 +95,7 @@ class KnightTour {
   /// Tries to visit [index]. Returns false (and changes nothing) if the move is
   /// not allowed.
   bool tryMove(int index) {
-    if (isOver || _board[index] != 0) return false;
+    if (isOver || isHole(index) || _board[index] != 0) return false;
     if (current != null && !_isKnightMove(current!, index)) return false;
     _path.add(index);
     _board[index] = _path.length;
@@ -113,7 +123,10 @@ class KnightTour {
   Iterable<int> _neighbours(int index) sync* {
     final row = index ~/ size, col = index % size;
     for (final (dr, dc) in _jumps) {
-      if (_onBoard(row + dr, col + dc)) yield (row + dr) * size + col + dc;
+      if (_onBoard(row + dr, col + dc)) {
+        final n = (row + dr) * size + col + dc;
+        if (!isHole(n)) yield n;
+      }
     }
   }
 

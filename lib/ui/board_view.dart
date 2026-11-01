@@ -139,6 +139,7 @@ class _Square extends StatelessWidget {
     final row = index ~/ game.size, col = index % game.size;
     final isLight = (row + col).isEven;
     final colors = Theme.of(context).extension<BoardColors>()!;
+    if (game.isHole(index)) return const Hole();
 
     final Color overlay;
     if (rejected) {
@@ -197,6 +198,51 @@ class _Square extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A square that isn't part of the board, drawn dark with diagonal stripes
+/// so it doesn't look like a square to play.
+class Hole extends StatelessWidget {
+  const Hole({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<BoardColors>()!;
+    return CustomPaint(
+      painter: _HolePainter(colors.hole, colors.holeStripe),
+      child: const SizedBox.expand(),
+    );
+  }
+}
+
+class _HolePainter extends CustomPainter {
+  _HolePainter(this.background, this.stripe);
+
+  final Color background;
+  final Color stripe;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final square = Offset.zero & size;
+    canvas
+      ..drawRect(square, Paint()..color = background)
+      ..clipRect(square);
+    final gap = size.width / 4;
+    final paint = Paint()
+      ..color = stripe
+      ..strokeWidth = gap * 0.35;
+    for (var x = -size.height; x < size.width; x += gap) {
+      canvas.drawLine(
+        Offset(x, size.height),
+        Offset(x + size.height, 0),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_HolePainter old) =>
+      old.background != background || old.stripe != stripe;
 }
 
 /// Move number on a square, drawn above the path so it stays readable.

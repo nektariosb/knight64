@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:knight64/game/high_scores.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -54,19 +56,32 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final store = HighScoreStore();
 
-    final table = await store.load();
+    final table = await store.load('8x8');
     expect(table.entries, isEmpty);
     table.add(score(42, name: 'Ana', closed: false, undos: 2));
-    await store.save(table);
+    await store.save('8x8', table);
     await store.setLastName('Ana');
 
-    final loaded = await store.load();
+    final loaded = await store.load('8x8');
     expect(loaded.entries.single.name, 'Ana');
     expect(loaded.entries.single.squares, 42);
     expect(loaded.entries.single.undosUsed, 2);
     expect(await store.lastName(), 'Ana');
 
-    await store.clear();
-    expect((await store.load()).entries, isEmpty);
+    await store.clear('8x8');
+    expect((await store.load('8x8')).entries, isEmpty);
+  });
+
+  test('each board has its own list; 8x8 keeps the old one', () async {
+    final old = jsonEncode([score(50, name: 'Old').toJson()]);
+    SharedPreferences.setMockInitialValues({'high_scores': old});
+    final store = HighScoreStore();
+    expect((await store.load('8x8')).entries.single.name, 'Old');
+    expect((await store.load('6x6')).entries, isEmpty);
+
+    await store.save('6x6', HighScoreTable([score(36, name: 'Six')]));
+    expect((await store.load('6x6')).entries.single.name, 'Six');
+    await store.clear('6x6');
+    expect((await store.load('8x8')).entries.single.name, 'Old');
   });
 }

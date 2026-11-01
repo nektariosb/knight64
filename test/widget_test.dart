@@ -17,10 +17,15 @@ Future<void> startApp(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-/// Taps the square at [row], [col] on the board.
-Future<void> tapSquare(WidgetTester tester, int row, int col) async {
+/// Taps the square at [row], [col] on a board of [size] x [size].
+Future<void> tapSquare(
+  WidgetTester tester,
+  int row,
+  int col, {
+  int size = 8,
+}) async {
   final board = tester.getRect(find.byType(BoardView)).deflate(4);
-  final cell = board.width / 8;
+  final cell = board.width / size;
   await tester.tapAt(board.topLeft + Offset(col + 0.5, row + 0.5) * cell);
   await tester.pump();
 }
@@ -229,6 +234,102 @@ void main() {
           .first,
     );
     expect(find.text('Amazing facts'), findsOneWidget);
+  });
+
+  testWidgets('restart asks first mid-game, but not after it', (tester) async {
+    SharedPreferences.setMockInitialValues({'path_at_end': false});
+    await startApp(tester);
+    await tapSquare(tester, 1, 2);
+
+    await tester.tap(find.text('Restart'));
+    await tester.pumpAndSettle();
+    expect(find.text('Start over?'), findsOneWidget);
+    await tester.tap(find.text('Keep playing'));
+    await tester.pumpAndSettle();
+    expect(find.text('Move 1 / 64'), findsOneWidget);
+
+    await tester.tap(find.text('Restart'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Start over'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tap any square to start'), findsOneWidget);
+
+    // Game over: no question.
+    await playIntoCorner(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Not now'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Restart'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('Tap any square to start'), findsOneWidget);
+  });
+
+  testWidgets('picking a board mid-game asks first', (tester) async {
+    await startApp(tester);
+    await tapSquare(tester, 0, 0);
+
+    Future<void> pick(String name) async {
+      await tester.tap(find.byTooltip('Board: 8×8'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(name));
+      await tester.pumpAndSettle();
+    }
+
+    // The board already in play: nothing happens.
+    await pick('8×8');
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('Move 1 / 64'), findsOneWidget);
+
+    await pick('6×6');
+    expect(find.text('Switch to 6×6?'), findsOneWidget);
+    await tester.tap(find.text('Keep playing'));
+    await tester.pumpAndSettle();
+    expect(find.text('Move 1 / 64'), findsOneWidget);
+
+    await pick('6×6');
+    await tester.tap(find.text('New game'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tap any square to start'), findsOneWidget);
+    expect(find.byTooltip('Board: 6×6'), findsOneWidget);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('board'), '6x6');
+
+    await tapSquare(tester, 0, 0, size: 6);
+    expect(find.text('Move 1 / 36'), findsOneWidget);
+  });
+
+  testWidgets('3x3 ring: the hole does nothing, scores go on its own list', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({'board': '3x3'});
+    await startApp(tester);
+
+    await tapSquare(tester, 1, 1, size: 3);
+    expect(find.text('Tap any square to start'), findsOneWidget);
+
+    for (final i in [0, 5, 6, 1, 8, 3, 2, 7]) {
+      await tapSquare(tester, i ~/ 3, i % 3, size: 3);
+    }
+    expect(find.text('Closed tour! All 8 squares'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Ana');
+    // Lets the Save button see the name.
+    await tester.pump();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Save'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('High scores'), findsOneWidget);
+    expect(find.text('8 / 8'), findsOneWidget);
+    await tester.tap(find.text('8×8'));
+    await tester.pumpAndSettle();
+    expect(find.text('No scores yet. Go play!'), findsOneWidget);
   });
 
   testWidgets('sound button turns sound off and remembers it', (tester) async {
