@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:knight64/game/fact_list.dart';
 import 'package:knight64/game/knight_tour.dart';
 import 'package:knight64/game/puzzle_list.dart';
 import 'package:knight64/game/puzzles.dart';
 import 'package:knight64/main.dart';
 import 'package:knight64/ui/board_view.dart';
 import 'package:knight64/ui/celebration.dart';
+import 'package:knight64/ui/fact_box.dart';
 import 'package:knight64/ui/info_screen.dart';
 import 'package:knight64/ui/options_sheet.dart';
 import 'package:knight64/ui/puzzle_picker.dart';
@@ -97,6 +99,43 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.text('Your name'), findsOneWidget);
+  });
+
+  testWidgets('every third game ends with a fact', (tester) async {
+    // Two games played already, and only the longest fact not seen yet.
+    final longest = facts.reduce(
+      (a, b) => a.text.length >= b.text.length ? a : b,
+    );
+    SharedPreferences.setMockInitialValues({
+      'path_at_end': false,
+      'fact_games': 2,
+      'facts_seen': [
+        for (final f in facts)
+          if (f != longest) f.id,
+      ],
+    });
+    // A small phone.
+    tester.view
+      ..physicalSize = const Size(720, 1280)
+      ..devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(KnightsTourApp(themeController: ThemeController()));
+    await tester.pumpAndSettle();
+
+    await playIntoCorner(tester);
+    await tester.pumpAndSettle();
+    expect(find.byType(FactBox), findsOneWidget);
+    expect(find.textContaining(longest.text), findsOneWidget);
+
+    // The next game has none.
+    await tester.tap(find.text('Not now'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Restart'));
+    await tester.pumpAndSettle();
+    await playIntoCorner(tester);
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.byType(FactBox), findsNothing);
   });
 
   testWidgets('with the path option off, the dialog comes right away', (

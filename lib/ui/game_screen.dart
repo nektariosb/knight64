@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../game/boards.dart';
+import '../game/facts.dart';
 import '../game/high_scores.dart';
 import '../game/knight_tour.dart';
 import '../game/options.dart';
@@ -15,6 +16,7 @@ import 'app_title.dart';
 import 'board_picker.dart';
 import 'board_view.dart';
 import 'celebration.dart';
+import 'fact_box.dart';
 import 'high_scores_screen.dart';
 import 'info_screen.dart';
 import 'options_sheet.dart';
@@ -42,6 +44,7 @@ class _GameScreenState extends State<GameScreen> {
   final _store = HighScoreStore();
   final _options = Options();
   final _progress = PuzzleProgress();
+  final _facts = FactDeck();
   int? _rejectedIndex;
   Timer? _flashTimer;
 
@@ -58,6 +61,13 @@ class _GameScreenState extends State<GameScreen> {
   /// The save dialog pops up once per game over; after that the player uses
   /// the "Save score" button.
   bool _gameOverShown = false;
+
+  /// The game was counted for the facts, so undoing and ending it again
+  /// doesn't count twice.
+  bool _gameCounted = false;
+
+  /// "Did you know?" for this game's dialogs, every few games.
+  Fact? _fact;
 
   /// A help option was on during this game, even if it was turned off again.
   /// Such games can't enter the high scores.
@@ -118,6 +128,7 @@ class _GameScreenState extends State<GameScreen> {
       if (mounted) setState(() {});
     });
     _progress.load();
+    _facts.load();
     _options.load().then((_) {
       if (!mounted) return;
       setState(() {
@@ -154,6 +165,10 @@ class _GameScreenState extends State<GameScreen> {
           !_gameOverShown &&
           (_game.isComplete || _puzzle == null)) {
         _gameOverShown = true;
+        if (!_gameCounted) {
+          _gameCounted = true;
+          _fact = _facts.gameFinished();
+        }
         // Waits for the path to draw, unless it was already on the board.
         _saveTimer = Timer(
           _options.pathAtEnd && !_options.pathWhilePlaying
@@ -195,12 +210,22 @@ class _GameScreenState extends State<GameScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Puzzle $number solved!'),
-        content: Text(
-          next == null
-              ? "That was the last puzzle. You've solved "
-                    '${_progress.solved.length} of ${puzzles.length}!'
-              : "You've solved ${_progress.solved.length} of "
-                    '${puzzles.length} puzzles.',
+        scrollable: true,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              next == null
+                  ? "That was the last puzzle. You've solved "
+                        '${_progress.solved.length} of ${puzzles.length}!'
+                  : "You've solved ${_progress.solved.length} of "
+                        '${puzzles.length} puzzles.',
+            ),
+            if (_fact case final fact?) ...[
+              const SizedBox(height: 16),
+              FactBox(fact),
+            ],
+          ],
         ),
         actions: [
           TextButton(
@@ -305,6 +330,8 @@ class _GameScreenState extends State<GameScreen> {
     _celebrating = false;
     _scoreSaved = false;
     _gameOverShown = false;
+    _gameCounted = false;
+    _fact = null;
     _helped = false;
     _checkFillable();
   }
@@ -393,6 +420,7 @@ class _GameScreenState extends State<GameScreen> {
         qualifies: !_helped && table.qualifies(_score('')),
         canUndo: _canUndo,
         initialName: lastName,
+        fact: _fact,
       ),
     );
     if (name == null || board != _board) return;

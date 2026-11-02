@@ -40,19 +40,23 @@ Open issues and ideas for Knight's Tour.
 - [x] Puzzle mode: 30 numbered puzzles (3×3 up to 10×10 and shapes) where some squares come pre-numbered; play move by move, and the knight must land on each given square at its number. Each has exactly one solution (checked in the tests). Unlimited undo, no scores, solved ones get a tick. Made by `dart run tool/make_puzzles.dart`.
   - [x] Order playtested: puzzles 10–11 (6×6, fewest numbers) are really hard, but kept where they are on purpose, so not everything is solved in half an hour.
   - [ ] More puzzles? The tool can make as many as we like.
-- [ ] Daily challenge: same start square (and holes) for everyone, picked from the date.
-- [ ] Timer?
+- [ ] Daily challenge: same start square (and holes) for everyone, picked from the date. Offline only, no sharing.
+- [ ] Personal bests and near misses after a game ("61! Your best is 63.", "New personal best!").
+- [ ] Discovery tips: after a few lost games, a gentle hint that leads towards Warnsdorff's rule ("The corners get trapped easily. Visit them early.").
+- [x] Timer: dropped.
+- [x] Stats (games played, wins, losses): dropped.
 
 ## Info
 
 - [x] "About the Knight's Tour" screen: how to play, open vs. closed tours, a short history, facts and numbers. Check every fact against a source before adding it.
-- [ ] Show a random fact somewhere (game over screen?).
+- [x] "Did you know?" fact on every 3rd game-over dialog (also when a puzzle is solved), no repeats until all are seen. 101 facts in `lib/game/fact_list.dart` (knight's tour, the knight piece, chess history), each checked against a source.
+  - [ ] Review the list: drop or reword facts (`facts_review.md`, same ids as in the code). Some are records that may be broken one day (C18, C25, C27–C29, C31).
 
 ## Graphics
 
 - [x] Visited squares: keep the faint checker pattern showing through.
 - [ ] Knight icon on the current square?
-- [ ] Animations (move, game over).
+- [ ] Animations (move, game over). On hold: if we do them, get the art from Claude Design.
 
 ## Project
 

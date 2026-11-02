@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../game/facts.dart';
+import 'fact_box.dart';
+
 /// Shown when a game ends. Pops with the entered name, or null if skipped.
 class SaveScoreDialog extends StatefulWidget {
   const SaveScoreDialog({
@@ -11,6 +14,7 @@ class SaveScoreDialog extends StatefulWidget {
     required this.qualifies,
     required this.canUndo,
     required this.initialName,
+    this.fact,
   });
 
   final int squares;
@@ -27,6 +31,9 @@ class SaveScoreDialog extends StatefulWidget {
   final bool canUndo;
 
   final String initialName;
+
+  /// Shown at the bottom, every few games.
+  final Fact? fact;
 
   @override
   State<SaveScoreDialog> createState() => _SaveScoreDialogState();
@@ -76,9 +83,18 @@ class _SaveScoreDialogState extends State<SaveScoreDialog> {
       ],
     );
 
+    final fact = [
+      if (widget.fact case final fact?) ...[
+        const SizedBox(height: 16),
+        FactBox(fact),
+      ],
+    ];
+
     if (!widget.qualifies) {
       return AlertDialog(
         title: Text(_title),
+        // A fact can make it taller than a small screen.
+        scrollable: true,
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -92,6 +108,7 @@ class _SaveScoreDialogState extends State<SaveScoreDialog> {
                   : 'Not enough for the high scores this time.',
               textAlign: TextAlign.center,
             ),
+            ...fact,
           ],
         ),
         actions: [
@@ -105,6 +122,7 @@ class _SaveScoreDialogState extends State<SaveScoreDialog> {
 
     return AlertDialog(
       title: Text(_title),
+      scrollable: true,
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -126,6 +144,7 @@ class _SaveScoreDialogState extends State<SaveScoreDialog> {
               'Misclick? Choose "Not now" and use Undo.',
               style: theme.textTheme.bodySmall,
             ),
+          ...fact,
         ],
       ),
       actions: [
