@@ -13,6 +13,7 @@ import '../game/options.dart';
 import '../game/puzzle_list.dart';
 import '../game/puzzles.dart';
 import '../game/solver.dart';
+import '../game/tips.dart';
 import 'app_title.dart';
 import 'board_picker.dart';
 import 'board_view.dart';
@@ -54,6 +55,7 @@ class _GameScreenState extends State<GameScreen> {
   final _progress = PuzzleProgress();
   final _dailyResults = DailyResults();
   final _facts = FactDeck();
+  final _tips = TipLadder();
   int? _rejectedIndex;
   Timer? _flashTimer;
 
@@ -77,6 +79,13 @@ class _GameScreenState extends State<GameScreen> {
 
   /// "Did you know?" for this game's dialogs, every few games.
   Fact? _fact;
+
+  /// A tip instead of the fact, every few lost games.
+  String? _tip;
+
+  /// The tip, unless the player undid the loss and filled the board after
+  /// all.
+  String? get _tipShown => _game.isComplete ? null : _tip;
 
   /// A help option was on during this game, even if it was turned off again.
   /// Such games can't enter the high scores.
@@ -142,6 +151,7 @@ class _GameScreenState extends State<GameScreen> {
     _progress.load();
     _dailyResults.load();
     _facts.load();
+    _tips.load();
     _options.load().then((_) {
       if (!mounted) return;
       setState(() {
@@ -182,7 +192,10 @@ class _GameScreenState extends State<GameScreen> {
         _gameOverShown = true;
         if (!_gameCounted) {
           _gameCounted = true;
-          _fact = _facts.gameFinished();
+          // Puzzles never get here lost. With help on, the tips are moot.
+          if (!_game.isComplete && !_helped) _tip = _tips.gameLost();
+          // A tip comes first: the fact waits, uncounted, for a later game.
+          if (_tip == null) _fact = _facts.gameFinished();
         }
         // Counted right away, so leaving before the dialog doesn't lose it.
         if (_daily case final daily? when !_helped) {
@@ -323,6 +336,10 @@ class _GameScreenState extends State<GameScreen> {
               const SizedBox(height: 16),
               FactBox(fact),
             ],
+            if (_tipShown case final tip?) ...[
+              const SizedBox(height: 16),
+              TipBox(tip),
+            ],
           ],
         ),
         actions: [
@@ -453,6 +470,7 @@ class _GameScreenState extends State<GameScreen> {
     _gameOverShown = false;
     _gameCounted = false;
     _fact = null;
+    _tip = null;
     _helped = false;
     _checkFillable();
   }
@@ -567,6 +585,7 @@ class _GameScreenState extends State<GameScreen> {
         canUndo: _canUndo,
         initialName: lastName,
         fact: _fact,
+        tip: _tipShown,
       ),
     );
     if (name == null || board != _board) return;

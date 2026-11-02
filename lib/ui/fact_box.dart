@@ -9,6 +9,29 @@ class FactBox extends StatelessWidget {
   final Fact fact;
 
   @override
+  Widget build(BuildContext context) =>
+      _NoteBox(Icons.auto_stories_outlined, 'Did you know?', fact.text);
+}
+
+/// "Tip:" box at the bottom of a game-over dialog, after some lost games.
+class TipBox extends StatelessWidget {
+  const TipBox(this.tip, {super.key});
+
+  final String tip;
+
+  @override
+  Widget build(BuildContext context) =>
+      _NoteBox(Icons.lightbulb_outline, 'Tip:', tip);
+}
+
+class _NoteBox extends StatelessWidget {
+  const _NoteBox(this.icon, this.heading, this.text);
+
+  final IconData icon;
+  final String heading;
+  final String text;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = theme.colorScheme.onSecondaryContainer;
@@ -22,16 +45,16 @@ class FactBox extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: 10,
         children: [
-          Icon(Icons.auto_stories_outlined, size: 20, color: color),
+          Icon(icon, size: 20, color: color),
           Expanded(
             child: Text.rich(
               TextSpan(
                 children: [
-                  const TextSpan(
-                    text: 'Did you know? ',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  TextSpan(
+                    text: '$heading ',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  TextSpan(text: fact.text),
+                  TextSpan(text: text),
                 ],
               ),
               style: theme.textTheme.bodyMedium?.copyWith(color: color),

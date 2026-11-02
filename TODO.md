@@ -41,8 +41,8 @@ Open issues and ideas for Knight's Tour.
   - [x] Order playtested: puzzles 10–11 (6×6, fewest numbers) are really hard, but kept where they are on purpose, so not everything is solved in half an hour.
   - [ ] More puzzles? The tool can make as many as we like.
 - [x] Daily challenge: a board and a start square picked from the date, the same on every device (offline, no sharing). Small boards early in the week (5×5, 6×6), 8×8 midweek, 8×8 shapes on Friday, 10×10 boards at the weekend. Play as often as you like; the best game of the day counts (not with help). A calendar marks filled and played days. Past days can't be played (decided).
-- [ ] Personal bests and near misses after a game ("61! Your best is 63.", "New personal best!").
-- [ ] Discovery tips: after a few lost games, a gentle hint that leads towards Warnsdorff's rule ("The corners get trapped easily. Visit them early.").
+- [x] Personal bests and near misses: dropped. Several people often play on the same device, so "your best" would compare players with each other.
+- [x] Discovery tips: every 3rd lost game without help (plain boards and the daily challenge), the game-over dialog shows a tip instead of a fact. Five tips in a fixed order lead up to Warnsdorff's rule, then start over, so a new player on the same device gets them again.
 - [x] Timer: dropped.
 - [x] Stats (games played, wins, losses): dropped.
 

@@ -15,6 +15,7 @@ class SaveScoreDialog extends StatefulWidget {
     required this.canUndo,
     required this.initialName,
     this.fact,
+    this.tip,
   });
 
   final int squares;
@@ -34,6 +35,9 @@ class SaveScoreDialog extends StatefulWidget {
 
   /// Shown at the bottom, every few games.
   final Fact? fact;
+
+  /// Shown at the bottom after some lost games, instead of a fact.
+  final String? tip;
 
   @override
   State<SaveScoreDialog> createState() => _SaveScoreDialogState();
@@ -83,10 +87,14 @@ class _SaveScoreDialogState extends State<SaveScoreDialog> {
       ],
     );
 
-    final fact = [
+    final note = [
       if (widget.fact case final fact?) ...[
         const SizedBox(height: 16),
         FactBox(fact),
+      ],
+      if (widget.tip case final tip?) ...[
+        const SizedBox(height: 16),
+        TipBox(tip),
       ],
     ];
 
@@ -108,7 +116,7 @@ class _SaveScoreDialogState extends State<SaveScoreDialog> {
                   : 'Not enough for the high scores this time.',
               textAlign: TextAlign.center,
             ),
-            ...fact,
+            ...note,
           ],
         ),
         actions: [
@@ -144,7 +152,7 @@ class _SaveScoreDialogState extends State<SaveScoreDialog> {
               'Misclick? Choose "Not now" and use Undo.',
               style: theme.textTheme.bodySmall,
             ),
-          ...fact,
+          ...note,
         ],
       ),
       actions: [
