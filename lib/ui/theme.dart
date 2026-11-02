@@ -44,7 +44,7 @@ class BoardColors extends ThemeExtension<BoardColors> {
     required this.hole,
     required this.holeStripe,
     required this.clueText,
-    required this.clueHalo,
+    required this.clueDisc,
   });
 
   final Color lightSquare;
@@ -78,14 +78,16 @@ class BoardColors extends ThemeExtension<BoardColors> {
   final Color holeStripe;
 
   /// A number given in a puzzle, on a square not visited yet: dark on a
-  /// light glow, the other way round from visited numbers.
+  /// light disc, so it can't be taken for a visited number.
   final Color clueText;
-  final Color clueHalo;
+  final Color clueDisc;
 
   static const dark = BoardColors(
     lightSquare: _sage,
     darkSquare: _forest,
-    visited: Color(0xB31B231E),
+    // Strong enough that a visited light square stays darker than an
+    // unvisited dark one.
+    visited: Color(0xE01B231E),
     visitedText: _sage,
     visitedTextHalo: _night,
     current: _mint,
@@ -99,7 +101,7 @@ class BoardColors extends ThemeExtension<BoardColors> {
     hole: _night,
     holeStripe: _olive,
     clueText: _night,
-    clueHalo: _mist,
+    clueDisc: _mist,
   );
 
   static const light = BoardColors(
@@ -119,7 +121,7 @@ class BoardColors extends ThemeExtension<BoardColors> {
     hole: Color(0xFF4A5536),
     holeStripe: _olive,
     clueText: _pine,
-    clueHalo: Colors.white,
+    clueDisc: Colors.white,
   );
 
   @override
@@ -145,7 +147,7 @@ class BoardColors extends ThemeExtension<BoardColors> {
       hole: Color.lerp(hole, other.hole, t)!,
       holeStripe: Color.lerp(holeStripe, other.holeStripe, t)!,
       clueText: Color.lerp(clueText, other.clueText, t)!,
-      clueHalo: Color.lerp(clueHalo, other.clueHalo, t)!,
+      clueDisc: Color.lerp(clueDisc, other.clueDisc, t)!,
     );
   }
 }

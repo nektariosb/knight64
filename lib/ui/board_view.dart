@@ -260,20 +260,24 @@ class _Number extends StatelessWidget {
     if (number == 0) {
       final clue = game.clueAt(index);
       if (clue == null) return const SizedBox.shrink();
-      return Center(
-        child: FittedBox(
-          child: Padding(
-            padding: const EdgeInsets.all(6),
-            child: Text(
-              '$clue',
-              style: TextStyle(
-                color: colors.clueText,
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                shadows: [
-                  for (var i = 0; i < 3; i++)
-                    Shadow(color: colors.clueHalo, blurRadius: 3),
-                ],
+      return FractionallySizedBox(
+        widthFactor: 0.62,
+        heightFactor: 0.62,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: colors.clueDisc,
+            shape: BoxShape.circle,
+          ),
+          child: FittedBox(
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text(
+                '$clue',
+                style: TextStyle(
+                  color: colors.clueText,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
