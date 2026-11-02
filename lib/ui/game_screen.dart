@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../game/boards.dart';
+import '../game/daily.dart';
 import '../game/facts.dart';
 import '../game/high_scores.dart';
 import '../game/knight_tour.dart';
@@ -16,6 +17,7 @@ import 'app_title.dart';
 import 'board_picker.dart';
 import 'board_view.dart';
 import 'celebration.dart';
+import 'daily_sheet.dart';
 import 'fact_box.dart';
 import 'high_scores_screen.dart';
 import 'info_screen.dart';
@@ -40,10 +42,17 @@ class _GameScreenState extends State<GameScreen> {
 
   /// The puzzle being played, or null on a plain board.
   Puzzle? _puzzle;
+
+  /// The daily challenge being played, or null.
+  DailyChallenge? _daily;
+
+  /// Best result of the day before this game, for the end-of-game dialog.
+  DayResult? _dailyBefore;
   final _sounds = Sounds();
   final _store = HighScoreStore();
   final _options = Options();
   final _progress = PuzzleProgress();
+  final _dailyResults = DailyResults();
   final _facts = FactDeck();
   int? _rejectedIndex;
   Timer? _flashTimer;
@@ -82,6 +91,9 @@ class _GameScreenState extends State<GameScreen> {
   bool _checking = false, _recheck = false;
 
   bool get _canUndo => _game.canUndo && !_scoreSaved;
+
+  /// Not a puzzle or the daily challenge.
+  bool get _plainBoard => _puzzle == null && _daily == null;
 
   bool get _showFillable =>
       _options.checkFillable && _game.moveCount > 0 && !_game.isOver;
@@ -128,13 +140,16 @@ class _GameScreenState extends State<GameScreen> {
       if (mounted) setState(() {});
     });
     _progress.load();
+    _dailyResults.load();
     _facts.load();
     _options.load().then((_) {
       if (!mounted) return;
       setState(() {
         if (_game.moveCount == 0) {
           final puzzle = puzzles.where((p) => p.id == _options.puzzle);
-          if (puzzle.isNotEmpty) {
+          if (_options.daily) {
+            _setDaily(DailyChallenge.today());
+          } else if (puzzle.isNotEmpty) {
             _setPuzzle(puzzle.first);
           } else if (_options.board != _board.id) {
             _setBoard(Board.byId(_options.board));
@@ -169,13 +184,17 @@ class _GameScreenState extends State<GameScreen> {
           _gameCounted = true;
           _fact = _facts.gameFinished();
         }
+        // Counted right away, so leaving before the dialog doesn't lose it.
+        if (_daily case final daily? when !_helped) {
+          _dailyBefore = _dailyResults.record(daily, _game.moveCount);
+        }
         // Waits for the path to draw, unless it was already on the board.
         _saveTimer = Timer(
           _options.pathAtEnd && !_options.pathWhilePlaying
               ? BoardView.pathDrawTime(_game.moveCount) +
                     const Duration(milliseconds: 500)
               : Duration.zero,
-          _game.isComplete ? _celebrate : _offerSave,
+          _game.isComplete ? _celebrate : _afterGame,
         );
       }
       return;
@@ -196,7 +215,7 @@ class _GameScreenState extends State<GameScreen> {
     setState(() => _celebrating = true);
     final puzzle = _puzzle;
     if (puzzle == null) {
-      _saveTimer = Timer(Celebration.bannerTime, _offerSave);
+      _saveTimer = Timer(Celebration.bannerTime, _afterGame);
       return;
     }
     _progress.markSolved(puzzle);
@@ -245,6 +264,85 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
+  /// After the path and any celebration: the save dialog, or for the daily
+  /// challenge, how the game compares with the best of the day.
+  void _afterGame() => switch (_daily) {
+    final daily? => _dailyDone(daily),
+    null => _offerSave(),
+  };
+
+  Future<void> _dailyDone(DailyChallenge daily) async {
+    final squares = _game.moveCount;
+    final complete = _game.isComplete;
+    final before = _dailyBefore;
+    final message = switch (before) {
+      _ when _helped =>
+        "You played with help, so this game doesn't count for the daily "
+            'challenge. Turn help off in Options and try again!',
+      _ when complete && before?.filled != true =>
+        "You've done today's challenge! Come back tomorrow for a new board.",
+      _ when complete => 'Filled again! Come back tomorrow for a new board.',
+      DayResult(filled: true) =>
+        'You already filled this board today. Well done!',
+      null => 'Play again to get further: your best game of the day counts.',
+      final best when squares > best.squares =>
+        'Your best today, up from ${best.squares}!',
+      final best when squares == best.squares =>
+        'Same as your best today. One more try?',
+      final best => 'Your best today is ${best.squares}. One more try?',
+    };
+    final again = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          !complete
+              ? 'No moves left'
+              : _game.isClosed
+              ? 'Closed tour!'
+              : 'Tour complete!',
+        ),
+        scrollable: true,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$squares / ${_game.total}',
+              style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(message, textAlign: TextAlign.center),
+            if (_canUndo)
+              Text(
+                'Misclick? Choose "OK" and use Undo.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            if (_fact case final fact?) ...[
+              const SizedBox(height: 16),
+              FactBox(fact),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('OK'),
+          ),
+          if (!complete)
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Try again'),
+            ),
+        ],
+      ),
+    );
+    if (again == true && mounted && _daily == daily && _game.isOver) {
+      setState(() => _setDaily(DailyChallenge.today()));
+    }
+  }
+
   void _undo() => setState(() {
     _saveTimer?.cancel();
     _celebrating = false;
@@ -262,8 +360,13 @@ class _GameScreenState extends State<GameScreen> {
       return;
     }
     setState(() {
-      _game.restart();
-      _newGame();
+      if (_daily != null) {
+        // After midnight, starting over moves on to the new day.
+        _setDaily(DailyChallenge.today());
+      } else {
+        _game.restart();
+        _newGame();
+      }
     });
   }
 
@@ -298,6 +401,7 @@ class _GameScreenState extends State<GameScreen> {
   /// Starts a new game on [board]. Call inside setState.
   void _setBoard(Board board) {
     _puzzle = null;
+    _daily = null;
     _board = board;
     _game = KnightTour(size: board.size, holes: board.holes);
     _newGame();
@@ -307,6 +411,7 @@ class _GameScreenState extends State<GameScreen> {
   /// setState.
   void _setPuzzle(Puzzle puzzle) {
     _puzzle = puzzle;
+    _daily = null;
     _board = puzzle.board;
     _game = KnightTour(
       size: _board.size,
@@ -317,10 +422,26 @@ class _GameScreenState extends State<GameScreen> {
     _newGame();
   }
 
+  /// Starts [daily]. Its start square is given as square 1, like a puzzle's
+  /// numbers. Call inside setState.
+  void _setDaily(DailyChallenge daily) {
+    _puzzle = null;
+    _daily = daily;
+    _board = daily.board;
+    _game = KnightTour(
+      size: _board.size,
+      holes: _board.holes,
+      clues: {daily.start: 1},
+    );
+    _newGame();
+  }
+
   /// Switches to [puzzle] and remembers it for next time.
   void _startPuzzle(Puzzle puzzle) {
-    _options.puzzle = puzzle.id;
-    _options.save();
+    _options
+      ..puzzle = puzzle.id
+      ..daily = false
+      ..save();
     setState(() => _setPuzzle(puzzle));
   }
 
@@ -342,10 +463,10 @@ class _GameScreenState extends State<GameScreen> {
       isScrollControlled: true,
       // A long list fills the screen; keep it clear of the status bar.
       useSafeArea: true,
-      builder: (_) => BoardPicker(current: _puzzle == null ? _board : null),
+      builder: (_) => BoardPicker(current: _plainBoard ? _board : null),
     );
     if (board == null || !mounted) return;
-    if (board == _board && _puzzle == null) return;
+    if (board == _board && _plainBoard) return;
     if (!await _confirmNewGame(
       title: 'Switch to ${board.name}?',
       text: "You're in the middle of a game. A new board starts a new game.",
@@ -356,8 +477,33 @@ class _GameScreenState extends State<GameScreen> {
     _options
       ..board = board.id
       ..puzzle = null
+      ..daily = false
       ..save();
     setState(() => _setBoard(board));
+  }
+
+  Future<void> _openDaily() async {
+    final today = DailyChallenge.today();
+    final playing = _daily?.id == today.id;
+    final play = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => DailySheet(results: _dailyResults, playing: playing),
+    );
+    if (play != true || playing || !mounted) return;
+    if (!await _confirmNewGame(
+      title: "Play today's challenge?",
+      text: "You're in the middle of a game. The challenge starts a new game.",
+      confirm: 'Play',
+    )) {
+      return;
+    }
+    _options
+      ..puzzle = null
+      ..daily = true
+      ..save();
+    setState(() => _setDaily(today));
   }
 
   Future<void> _choosePuzzle() async {
@@ -456,6 +602,7 @@ class _GameScreenState extends State<GameScreen> {
       if (_game.moveCount == 0) return 'Tap square 1 to start';
       return 'Move ${_game.moveCount} / ${_game.total}';
     }
+    if (_daily != null && _game.moveCount == 0) return 'Tap square 1 to start';
     if (_game.isComplete) {
       return _game.isClosed
           ? 'Closed tour! All ${_game.total} squares'
@@ -537,6 +684,11 @@ class _GameScreenState extends State<GameScreen> {
       onPressed: _choosePuzzle,
     ),
     IconButton(
+      tooltip: 'Daily challenge',
+      icon: const Icon(Icons.today_outlined),
+      onPressed: _openDaily,
+    ),
+    IconButton(
       tooltip: widget.themeController.isDark ? 'Light mode' : 'Dark mode',
       icon: Icon(
         widget.themeController.isDark
@@ -597,11 +749,11 @@ class _GameScreenState extends State<GameScreen> {
   Widget _screen(ThemeData theme) {
     return Scaffold(
       appBar: AppBar(
-        title: AppTitle(
-          _puzzle == null
-              ? _board.name
-              : 'Puzzle ${puzzles.indexOf(_puzzle!) + 1}',
-        ),
+        title: AppTitle(switch ((_puzzle, _daily)) {
+          (final puzzle?, _) => 'Puzzle ${puzzles.indexOf(puzzle) + 1}',
+          (_, _?) => 'Daily challenge',
+          _ => _board.name,
+        }),
       ),
       body: SafeArea(
         child: Center(
@@ -669,7 +821,7 @@ class _GameScreenState extends State<GameScreen> {
                       if (_game.isOver &&
                           !_scoreSaved &&
                           !_helped &&
-                          _puzzle == null)
+                          _plainBoard)
                         Expanded(
                           child: FilledButton.tonalIcon(
                             onPressed: _offerSave,

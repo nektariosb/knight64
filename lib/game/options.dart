@@ -12,12 +12,16 @@ class Options {
   static const _checkFillableKey = 'check_fillable';
   static const _boardKey = 'board';
   static const _puzzleKey = 'puzzle';
+  static const _dailyKey = 'daily';
 
   /// Id of the board to play on.
   String board = Board.standard.id;
 
   /// Id of the puzzle being played, or null when playing a plain board.
   String? puzzle;
+
+  /// Playing the daily challenge: the app opens on today's.
+  bool daily = false;
 
   /// Draw the knight's path when a game ends. Not a help: the game is over.
   bool pathAtEnd = true;
@@ -53,6 +57,7 @@ class Options {
     checkFillable = prefs.getBool(_checkFillableKey) ?? false;
     board = Board.byId(prefs.getString(_boardKey)).id;
     puzzle = prefs.getString(_puzzleKey);
+    daily = prefs.getBool(_dailyKey) ?? false;
   }
 
   Future<void> save() async {
@@ -64,6 +69,7 @@ class Options {
     await prefs.setBool(_markDeadKey, markDead);
     await prefs.setBool(_checkFillableKey, checkFillable);
     await prefs.setString(_boardKey, board);
+    await prefs.setBool(_dailyKey, daily);
     if (puzzle case final id?) {
       await prefs.setString(_puzzleKey, id);
     } else {

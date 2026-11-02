@@ -46,6 +46,21 @@ class Board {
     return light * 2 == total;
   }
 
+  /// Whether a tour can start on [index]. A knight always lands on the other
+  /// colour, so when one colour has more squares, a tour must start (and
+  /// end) on it. For the boards here, that's enough (see
+  /// test/boards_test.dart).
+  bool canStartAt(int index) {
+    if (holes.contains(index)) return false;
+    var light = 0;
+    for (var i = 0; i < size * size; i++) {
+      if (!holes.contains(i) && (i ~/ size + i % size).isEven) light++;
+    }
+    final dark = total - light;
+    if (light == dark) return true;
+    return (index ~/ size + index % size).isEven == light > dark;
+  }
+
   static const standard = Board(
     id: '8x8',
     name: '8×8',

@@ -32,6 +32,11 @@ void main() {
             ? Fillable.no
             : Fillable.yes;
         expect(fromStart(board, i), expected, reason: '${board.name}, $i');
+        expect(
+          board.canStartAt(i),
+          expected == Fillable.yes,
+          reason: '${board.name}, $i',
+        );
       }
     }
   });

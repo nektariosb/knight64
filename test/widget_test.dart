@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:knight64/game/daily.dart';
 import 'package:knight64/game/fact_list.dart';
 import 'package:knight64/game/knight_tour.dart';
 import 'package:knight64/game/puzzle_list.dart';
@@ -541,6 +542,94 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('puzzle'), isNull);
     });
+  });
+
+  testWidgets('daily challenge: fixed start, best of the day is kept', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({'path_at_end': false});
+    await startApp(tester);
+    await tester.tap(find.byTooltip('Daily challenge'));
+    await tester.pumpAndSettle();
+    expect(find.text('Not played yet.'), findsOneWidget);
+    await tester.tap(find.text("Play today's challenge"));
+    await tester.pumpAndSettle();
+    expect(find.text('Daily challenge'), findsOneWidget);
+    expect(find.text('Tap square 1 to start'), findsOneWidget);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('daily'), isTrue);
+
+    // Today's board changes every day, so play it by the rules: the first
+    // move the knight has, until it's stuck (or the board is full).
+    final daily = DailyChallenge.today();
+    final board = daily.board;
+    final game = KnightTour(
+      size: board.size,
+      holes: board.holes,
+      clues: {daily.start: 1},
+    );
+    final other = daily.start == 0 ? 1 : 0;
+    if (!board.holes.contains(other)) {
+      await tapSquare(tester, 0, other, size: board.size);
+      expect(find.text('Tap square 1 to start'), findsOneWidget);
+    }
+    var square = daily.start;
+    while (true) {
+      game.tryMove(square);
+      await tapSquare(
+        tester,
+        square ~/ board.size,
+        square % board.size,
+        size: board.size,
+      );
+      final moves = game.legalMovesFrom(square);
+      if (moves.isEmpty) break;
+      square = moves.first;
+    }
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(Celebration.bannerTime);
+    await tester.pumpAndSettle();
+    expect(find.text('${game.moveCount} / ${board.total}'), findsOneWidget);
+    expect(find.text('Your name'), findsNothing);
+    expect(prefs.getStringList('daily_best'), [
+      '${daily.id} ${game.moveCount} ${board.total}',
+    ]);
+
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    expect(find.text('Save'), findsNothing);
+    await tester.tap(find.byTooltip('Daily challenge'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text(
+        game.isComplete
+            ? 'Board filled!'
+            : 'Best today: ${game.moveCount} / ${board.total}.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Keep playing'), findsOneWidget);
+  });
+
+  testWidgets('the app comes back to the daily challenge, a board leaves it', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({'daily': true});
+    await startApp(tester);
+    expect(find.text('Daily challenge'), findsOneWidget);
+    expect(find.text('Tap square 1 to start'), findsOneWidget);
+
+    await tester.tap(
+      find.byTooltip('Board: ${DailyChallenge.today().board.name}'),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(of: find.byType(BottomSheet), matching: find.text('6×6')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Tap any square to start'), findsOneWidget);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('daily'), isFalse);
   });
 
   testWidgets('sound button turns sound off and remembers it', (tester) async {

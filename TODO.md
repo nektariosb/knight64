@@ -40,7 +40,7 @@ Open issues and ideas for Knight's Tour.
 - [x] Puzzle mode: 30 numbered puzzles (3×3 up to 10×10 and shapes) where some squares come pre-numbered; play move by move, and the knight must land on each given square at its number. Each has exactly one solution (checked in the tests). Unlimited undo, no scores, solved ones get a tick. Made by `dart run tool/make_puzzles.dart`.
   - [x] Order playtested: puzzles 10–11 (6×6, fewest numbers) are really hard, but kept where they are on purpose, so not everything is solved in half an hour.
   - [ ] More puzzles? The tool can make as many as we like.
-- [ ] Daily challenge: same start square (and holes) for everyone, picked from the date. Offline only, no sharing.
+- [x] Daily challenge: a board and a start square picked from the date, the same on every device (offline, no sharing). Small boards early in the week (5×5, 6×6), 8×8 midweek, 8×8 shapes on Friday, 10×10 boards at the weekend. Play as often as you like; the best game of the day counts (not with help). A calendar marks filled and played days. Past days can't be played (decided).
 - [ ] Personal bests and near misses after a game ("61! Your best is 63.", "New personal best!").
 - [ ] Discovery tips: after a few lost games, a gentle hint that leads towards Warnsdorff's rule ("The corners get trapped easily. Visit them early.").
 - [x] Timer: dropped.

@@ -12,6 +12,7 @@ void main() {
     expect(options.pathWhilePlaying, isFalse);
     expect(options.anyHelp, isFalse);
     expect(options.board, '8x8');
+    expect(options.daily, isFalse);
   });
 
   test('a board that no longer exists falls back to 8x8', () async {
@@ -24,6 +25,7 @@ void main() {
   test('saves and loads every option', () async {
     final options = Options()
       ..board = '6x6'
+      ..daily = true
       ..pathAtEnd = false
       ..pathWhilePlaying = true
       ..highlightMoves = true
@@ -35,6 +37,7 @@ void main() {
     final loaded = Options();
     await loaded.load();
     expect(loaded.board, '6x6');
+    expect(loaded.daily, isTrue);
     expect(loaded.pathAtEnd, isFalse);
     expect(loaded.pathWhilePlaying, isTrue);
     expect(loaded.highlightMoves, isTrue);

@@ -68,10 +68,18 @@ class BoardPicker extends StatelessWidget {
 
 /// Small drawing of a board, with its holes.
 class BoardPreview extends StatelessWidget {
-  const BoardPreview({super.key, required this.board, required this.width});
+  const BoardPreview({
+    super.key,
+    required this.board,
+    required this.width,
+    this.start,
+  });
 
   final Board board;
   final double width;
+
+  /// A square to mark as the place to start, drawn like the knight's square.
+  final int? start;
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +101,9 @@ class BoardPreview extends StatelessWidget {
                       child: board.holes.contains(row * size + col)
                           ? const Hole()
                           : ColoredBox(
-                              color: (row + col).isEven
+                              color: row * size + col == start
+                                  ? colors.current
+                                  : (row + col).isEven
                                   ? colors.lightSquare
                                   : colors.darkSquare,
                             ),
