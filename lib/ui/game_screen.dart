@@ -11,6 +11,7 @@ import '../game/options.dart';
 import '../game/puzzle_list.dart';
 import '../game/puzzles.dart';
 import '../game/solver.dart';
+import 'app_title.dart';
 import 'board_picker.dart';
 import 'board_view.dart';
 import 'celebration.dart';
@@ -568,9 +569,9 @@ class _GameScreenState extends State<GameScreen> {
   Widget _screen(ThemeData theme) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: AppTitle(
           _puzzle == null
-              ? "Knight's Tour"
+              ? _board.name
               : 'Puzzle ${puzzles.indexOf(_puzzle!) + 1}',
         ),
       ),

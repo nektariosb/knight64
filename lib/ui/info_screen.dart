@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'app_title.dart';
 import 'theme.dart';
 
 /// How to play, open and closed tours, a little history and some facts.
@@ -13,7 +14,7 @@ class InfoScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('About')),
+      appBar: AppBar(title: const AppTitle('About')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),

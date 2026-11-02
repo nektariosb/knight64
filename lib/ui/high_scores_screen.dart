@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../game/boards.dart';
 import '../game/high_scores.dart';
+import 'app_title.dart';
 
 /// The high scores of each board, starting with [board].
 class HighScoresScreen extends StatefulWidget {
@@ -85,7 +86,7 @@ class _HighScoresScreenState extends State<HighScoresScreen> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('High scores'),
+        title: const AppTitle('High scores'),
         actions: [
           if (entries != null && entries.isNotEmpty)
             IconButton(

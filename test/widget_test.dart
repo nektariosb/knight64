@@ -277,7 +277,13 @@ void main() {
     Future<void> pick(String name) async {
       await tester.tap(find.byTooltip('Board: 8×8'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text(name));
+      // The subtitle shows the board name too, so look in the picker only.
+      await tester.tap(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.text(name),
+        ),
+      );
       await tester.pumpAndSettle();
     }
 
