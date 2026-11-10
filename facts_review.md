@@ -201,8 +201,8 @@ Every fact was checked against the source given under it.
   Source: https://en.wikipedia.org/wiki/Judit_Polg%C3%A1r
 - [x] **C31.** ⏳ Magnus Carlsen became a grandmaster at 13. His rating of 2,882 in 2014 is the highest ever.
   Source: https://en.wikipedia.org/wiki/Magnus_Carlsen
-- [x] **C32.** Thessaloniki hosted the Chess Olympiad twice, in 1984 and 1988. In 1988, Hungary's teenage team won the women's event with all three Polgár sisters. Judit was only 12!
-  Source: https://en.wikipedia.org/wiki/26th_Chess_Olympiad, https://en.wikipedia.org/wiki/28th_Chess_Olympiad
+- [x] **C32.** At the 1988 Chess Olympiad, Hungary's teenage team won the women's event with all three Polgár sisters. Judit was only 12!
+  Source: https://en.wikipedia.org/wiki/28th_Chess_Olympiad
 - [x] **C33.** The Chess Olympiad is a team event for countries, held every two years. Greece has played in it since 1950.
   Source: https://en.wikipedia.org/wiki/Chess_Olympiad, https://el.wikipedia.org/wiki/Σκάκι
 - [x] **C34.** The Greek word σκάκι comes from the Italian "scacchi". That word goes back to the Persian "shāh", meaning king.

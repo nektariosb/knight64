@@ -488,9 +488,8 @@ const facts = [
   ),
   Fact(
     'C32',
-    'Thessaloniki hosted the Chess Olympiad twice, in 1984 and 1988. In '
-        "1988, Hungary's teenage team won the women's event with all three "
-        'Polgár sisters. Judit was only 12!',
+    "At the 1988 Chess Olympiad, Hungary's teenage team won the women's "
+        'event with all three Polgár sisters. Judit was only 12!',
   ),
   Fact(
     'C33',
