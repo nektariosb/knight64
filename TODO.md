@@ -24,8 +24,8 @@ Learned from another project that went through both stores:
 Still to do:
 - [x] English store text, icon and 7 phone screenshots in `fastlane/metadata/android/en-US/` (F-Droid reads them from the repo; reuse them for Google Play). Screenshots are 1080×1920: Google Play rejects anything taller than twice its width.
 - [ ] Other languages: later, maybe never.
-- [ ] Google Play feature graphic (1024×500 banner). Art, so get it from Claude Design.
-- [ ] Privacy policy page for Google Play (the app collects nothing and never goes online).
+- [x] Google Play feature graphic (1024×500 banner, from Claude Design): `fastlane/metadata/android/en-US/images/featureGraphic.png`. Play wants it opaque; Claude Design exports RGBA, so drop the alpha channel.
+- [x] Privacy policy: `PRIVACY.md`. Play takes the GitHub URL (https://github.com/nektariosb/knight64/blob/main/PRIVACY.md) once it's pushed.
 - [ ] Google Play: new personal developer accounts must run a closed test (12 testers, 14 days) before the first public release.
 - [ ] F-Droid: a merge request to `fdroiddata` with the build recipe; F-Droid builds the app from source and signs it with its own key. Check how the recipe handles the debug-key fallback in `android/app/build.gradle.kts`.
 
