@@ -7,8 +7,20 @@ Open issues and ideas for Knight's Tour.
 - [ ] **Windows**: release build (`flutter build windows`). Needs Visual Studio 2022 with the "Desktop development with C++" workload, and Developer Mode on.
 - [ ] **Linux**: release build (`flutter build linux`). Has to be built on Linux (or WSL), with the GStreamer packages for sound.
 - [ ] **Android**: release build (`flutter build apk` / `flutter build appbundle`).
-  - [ ] Change the package name from `com.example.knight64` before any store release.
+  - [x] Package name: `io.github.nektariosb.knight64` (was `com.example.knight64`). Can't change once the app is in a store.
   - [ ] Set up a signing key (kept out of the repo).
+
+## Store release (Google Play and F-Droid)
+
+Learned from another project that went through both stores:
+- [x] Open-source license: MIT (`LICENSE`). F-Droid only takes free/open-source apps.
+- [ ] F-Droid wants an app that has been maintained for more than 3 months before it's added.
+
+Still to do:
+- [ ] Store text and screenshots in `fastlane/metadata/android/en-US/` (F-Droid reads them from the repo; reuse them for Google Play).
+- [ ] Privacy policy page for Google Play (the app collects nothing and never goes online).
+- [ ] Google Play: new personal developer accounts must run a closed test (12 testers, 14 days) before the first public release.
+- [ ] F-Droid: a merge request to `fdroiddata` with the build recipe; F-Droid builds the app from source and signs it with its own key.
 - [ ] **Web**: release build (`flutter build web`) and choose where to host it (e.g. GitHub Pages).
 - [x] App icon for each platform: a knight drawn as one olive line on mist (made with Claude Design; master drawing in `tool/knight-icon.svg`). Android has an adaptive vector icon with a monochrome layer for themed icons. The name "Knight's Tour" is set everywhere.
   - [ ] Linux: the window has no icon yet (the Flutter Linux runner doesn't set one).
