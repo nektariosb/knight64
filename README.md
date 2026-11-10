@@ -80,6 +80,21 @@ sudo apt install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1
 flutter test
 ```
 
+### Android release
+
+Release builds are signed with the key named in `android/key.properties` (git-ignored, never commit it):
+
+```
+storePassword=...
+keyPassword=...
+keyAlias=upload
+storeFile=C:/path/to/upload-key.jks
+```
+
+Without that file, release builds fall back to the debug key. Build with `flutter build appbundle` (Google Play) or `flutter build apk`.
+
+Store text, icon and screenshots live in `fastlane/metadata/android/` (the layout F-Droid reads).
+
 ## Project structure
 
 ```

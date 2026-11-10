@@ -136,7 +136,10 @@ class _DailySheetState extends State<DailySheet> {
           const SizedBox(height: 16),
           Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 360),
+              // Narrow enough that a six-week month and its key fit on a
+              // 16:9 phone without scrolling (day circles are as tall as
+              // they are wide).
+              constraints: const BoxConstraints(maxWidth: 320),
               child: _calendar(theme),
             ),
           ),

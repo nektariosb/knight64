@@ -1,0 +1,22 @@
+Knight's Tour is a classic chess puzzle: move a knight so that it lands on every square of the board exactly once.
+
+Tap a square a knight's move away to jump there. Each square you visit gets a number. Fill the whole board to complete the tour. If your last square is a knight's move from your first, you've made a closed tour: a loop the knight could go round forever.
+
+<b>Boards and modes</b>
+• Board sizes from a tiny 3×3 ring up to 10×10, each with its own high score list
+• Shaped boards: Cross, Donut, Frame, Heart, Diamond, Smiley, House and Tree
+• 30 puzzles where some numbers are already on the board, each with exactly one solution
+• A daily challenge: a new board and start square every day, and a calendar of the days you played
+
+<b>Learn as you play</b>
+• Help you can turn on: highlight possible moves, count each square's exits, warn about squares that can no longer be reached, and check whether the board can still be filled
+• Games played with help don't go on the high score list, so the scores stay fair
+• Now and then, after a lost game, a tip that leads you step by step to Warnsdorff's rule
+• "Did you know?" facts about the knight's tour, the knight and the history of chess
+• An About page with the rules, open and closed tours, and the puzzle's long history
+
+<b>For everyone, children too</b>
+• Free, with no ads and no in-app purchases
+• No internet, no accounts, no tracking: nothing leaves your device
+• Light and dark theme, sound on or off
+• Open source (MIT license)
