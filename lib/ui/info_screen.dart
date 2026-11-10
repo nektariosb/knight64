@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'app_title.dart';
 import 'theme.dart';
 
+/// Where the privacy policy lives (Google Play wants it linked in the app).
+const privacyPolicyUrl =
+    'https://github.com/nektariosb/knight64/blob/main/PRIVACY.md';
+
 /// How to play, open and closed tours, a little history and some facts.
 ///
 /// The facts were checked against Wikipedia's "Knight's tour" article and
@@ -154,6 +158,23 @@ class InfoScreen extends StatelessWidget {
                 'to 260! If the two long diagonals did too, it would be a '
                 '"magic square". But a computer search in 2003 showed that '
                 'no tour can do that.',
+              ),
+
+              const _Heading('Privacy'),
+              const _Point(
+                'The game never goes online. It keeps your scores, names '
+                'and options only on this device, and shares nothing '
+                'with anyone.',
+              ),
+              const _Point('The full privacy policy is here:'),
+              Padding(
+                padding: const EdgeInsets.only(left: 20, bottom: 8),
+                child: SelectableText(
+                  privacyPolicyUrl,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
               Text(

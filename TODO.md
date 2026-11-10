@@ -26,7 +26,8 @@ Still to do:
 - [ ] Other languages: later, maybe never.
 - [x] Google Play feature graphic (1024×500 banner, from Claude Design): `fastlane/metadata/android/en-US/images/featureGraphic.png`. Play wants it opaque; Claude Design exports RGBA, so drop the alpha channel.
 - [x] Privacy policy: `PRIVACY.md`. Play takes the GitHub URL (https://github.com/nektariosb/knight64/blob/main/PRIVACY.md) once it's pushed.
-- [ ] Google Play: new personal developer accounts must run a closed test (12 testers, 14 days) before the first public release.
+- [x] Privacy policy linked inside the app too (About screen, "Privacy"); Play requires it. Plain selectable text, no url_launcher.
+- [ ] Google Play: new personal developer accounts must run a closed test (12 testers, 14 days) before the first public release. Version 1 (1.0.0) sent to the closed track on 2026-11-10; waiting for review, then the opt-in link goes to the testers.
 - [ ] F-Droid: a merge request to `fdroiddata` with the build recipe; F-Droid builds the app from source and signs it with its own key. Check how the recipe handles the debug-key fallback in `android/app/build.gradle.kts`.
 
 ## Gameplay
