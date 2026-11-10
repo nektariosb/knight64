@@ -8,7 +8,7 @@ Open issues and ideas for Knight's Tour.
 - [ ] **Linux**: release build (`flutter build linux`). Has to be built on Linux (or WSL), with the GStreamer packages for sound.
 - [ ] **Android**: release build (`flutter build apk` / `flutter build appbundle`).
   - [x] Package name: `io.github.nektariosb.knight64` (was `com.example.knight64`). Can't change once the app is in a store.
-  - [ ] Set up a signing key (kept out of the repo).
+  - [ ] Signing key: Gradle reads `android/key.properties` (git-ignored) and signs release builds with it; without it, release builds use the debug key. Still to do: create the upload key and back it up outside the repo.
 
 ## Store release (Google Play and F-Droid)
 
